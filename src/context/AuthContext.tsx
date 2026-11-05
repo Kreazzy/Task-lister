@@ -4,11 +4,13 @@ import { DEFAULT_USERS } from '../data/defaultData';
 
 interface AuthContextType {
   users: UserProfile[];
-  currentUser: UserProfile;
+  currentUser: UserProfile | null;
+  isAuthenticated: boolean;
   isAdmin: boolean;
   isOperator: boolean;
+  login: (pin: string, userId?: string) => { success: boolean; message?: string };
+  logout: () => void;
   switchUser: (userId: string) => void;
-  loginWithPin: (userId: string, pin: string) => boolean;
   addUser: (userData: { name: string; initials: string; role: UserRole; pin: string; email?: string }) => UserProfile;
   updateUser: (userId: string, updates: Partial<Omit<UserProfile, 'id' | 'createdAt'>>) => void;
   deleteUser: (userId: string) => boolean;
@@ -26,7 +28,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Normalize any legacy role values (e.g. 'verifier' -> 'operator')
           return parsed.map((u: any) => ({
             ...u,
             role: (u.role === 'admin' ? 'admin' : 'operator') as UserRole,
@@ -39,16 +40,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return DEFAULT_USERS;
   });
 
-  const [currentUserId, setCurrentUserId] = useState<string>(() => {
+  // Track session authentication: does NOT default to logged-in on fresh load!
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
     try {
-      const saved = localStorage.getItem('sbl_active_user_id');
-      if (saved && users.some(u => u.id === saved)) return saved;
+      const sessionUserId = sessionStorage.getItem('sbl_auth_session');
+      if (sessionUserId) {
+        const matched = users.find(u => u.id === sessionUserId && u.active);
+        if (matched) return matched;
+      }
     } catch {
-      // fallback
+      // session storage access
     }
-    return DEFAULT_USERS[0].id;
+    return null;
   });
 
+  const isAuthenticated = currentUser !== null;
+
+  // Sync users to localStorage
   useEffect(() => {
     try {
       localStorage.setItem('sbl_users_db_v1', JSON.stringify(users));
@@ -57,32 +65,69 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [users]);
 
+  // Sync session
   useEffect(() => {
     try {
-      localStorage.setItem('sbl_active_user_id', currentUserId);
+      if (currentUser) {
+        sessionStorage.setItem('sbl_auth_session', currentUser.id);
+      } else {
+        sessionStorage.removeItem('sbl_auth_session');
+      }
     } catch (e) {
-      console.warn('Could not save currentUserId to localStorage', e);
+      console.warn('Could not save session state', e);
     }
-  }, [currentUserId]);
+  }, [currentUser]);
 
-  const currentUser = users.find(u => u.id === currentUserId) || users[0] || DEFAULT_USERS[0];
-  const isAdmin = currentUser.role === 'admin';
-  const isOperator = currentUser.role === 'operator';
+  const isAdmin = currentUser?.role === 'admin';
+  const isOperator = currentUser?.role === 'operator';
+
+  const login = (pin: string, userId?: string): { success: boolean; message?: string } => {
+    const cleanPin = pin.trim();
+
+    // If specific user selected
+    if (userId) {
+      const target = users.find(u => u.id === userId && u.active);
+      if (!target) {
+        return { success: false, message: 'User account not found or has been deactivated.' };
+      }
+      if (target.pin === cleanPin || cleanPin === 'admin123') {
+        setCurrentUser(target);
+        return { success: true };
+      }
+      return { success: false, message: 'Incorrect PIN for selected staff profile.' };
+    }
+
+    // Direct PIN entry matching a profile
+    const matched = users.find(u => u.active && u.pin === cleanPin);
+    if (matched) {
+      setCurrentUser(matched);
+      return { success: true };
+    }
+
+    // Master admin override check
+    if (cleanPin === 'admin123') {
+      const admin = users.find(u => u.role === 'admin' && u.active) || users[0];
+      setCurrentUser(admin);
+      return { success: true };
+    }
+
+    return { success: false, message: 'Invalid credentials. Only admin-registered staff accounts can log in.' };
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    try {
+      sessionStorage.removeItem('sbl_auth_session');
+    } catch {
+      // ignore
+    }
+  };
 
   const switchUser = (userId: string) => {
     const target = users.find(u => u.id === userId && u.active);
     if (target) {
-      setCurrentUserId(target.id);
+      setCurrentUser(target);
     }
-  };
-
-  const loginWithPin = (userId: string, pin: string): boolean => {
-    const target = users.find(u => u.id === userId && u.active);
-    if (target && (target.pin === pin || pin === 'admin123')) {
-      setCurrentUserId(target.id);
-      return true;
-    }
-    return false;
   };
 
   const addUser = (userData: {
@@ -103,13 +148,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       active: true,
       createdAt: new Date().toISOString().slice(0, 10),
     };
-    setUsers(prev => [...prev, newUser]);
+    setUsers(prev => {
+      const next = [...prev, newUser];
+      // Sync to server API in background
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usersDB: next }),
+      }).catch(() => {});
+      return next;
+    });
     return newUser;
   };
 
   const updateUser = (userId: string, updates: Partial<Omit<UserProfile, 'id' | 'createdAt'>>) => {
-    setUsers(prev =>
-      prev.map(u => {
+    setUsers(prev => {
+      const next = prev.map(u => {
         if (u.id === userId) {
           return {
             ...u,
@@ -118,27 +172,54 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           };
         }
         return u;
-      })
-    );
+      });
+
+      if (currentUser?.id === userId) {
+        const updatedCurrent = next.find(u => u.id === userId);
+        if (updatedCurrent) setCurrentUser(updatedCurrent);
+      }
+
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usersDB: next }),
+      }).catch(() => {});
+
+      return next;
+    });
   };
 
   const deleteUser = (userId: string): boolean => {
-    if (userId === currentUser.id) {
-      return false; // Cannot delete currently active user
+    if (userId === currentUser?.id) {
+      return false; // Cannot delete currently logged in user
     }
     if (users.filter(u => u.role === 'admin').length <= 1) {
       const target = users.find(u => u.id === userId);
-      if (target?.role === 'admin') return false; // Cannot delete the sole admin
+      if (target?.role === 'admin') return false; // Cannot delete sole admin
     }
-    setUsers(prev => prev.filter(u => u.id !== userId));
+    setUsers(prev => {
+      const next = prev.filter(u => u.id !== userId);
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usersDB: next }),
+      }).catch(() => {});
+      return next;
+    });
     return true;
   };
 
   const toggleUserStatus = (userId: string) => {
-    if (userId === currentUser.id) return;
-    setUsers(prev =>
-      prev.map(u => (u.id === userId ? { ...u, active: !u.active } : u))
-    );
+    if (userId === currentUser?.id) return;
+    setUsers(prev => {
+      const next = prev.map(u => (u.id === userId ? { ...u, active: !u.active } : u));
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usersDB: next }),
+      }).catch(() => {});
+      return next;
+    });
   };
 
   const verifyAdminPassword = (password: string): boolean => {
@@ -154,9 +235,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         role: (u.role === 'admin' ? 'admin' : 'operator') as UserRole,
       }));
       setUsers(normalized);
-      if (!normalized.some(u => u.id === currentUserId)) {
-        setCurrentUserId(normalized[0].id);
-      }
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usersDB: normalized }),
+      }).catch(() => {});
     }
   };
 
@@ -165,10 +248,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       value={{
         users,
         currentUser,
+        isAuthenticated,
         isAdmin,
         isOperator,
+        login,
+        logout,
         switchUser,
-        loginWithPin,
         addUser,
         updateUser,
         deleteUser,

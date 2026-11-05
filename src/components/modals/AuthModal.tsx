@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { KeyRound, UserCheck, ShieldCheck, X } from 'lucide-react';
+import { KeyRound, ShieldCheck, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types';
 
@@ -10,8 +10,10 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccessNotice }) => {
-  const { users, currentUser, switchUser, loginWithPin } = useAuth();
-  const [selectedUserId, setSelectedUserId] = useState<string>(currentUser.id);
+  const { users, currentUser, login } = useAuth();
+  const [selectedUserId, setSelectedUserId] = useState<string>(
+    currentUser?.id || users[0]?.id || ''
+  );
   const [pin, setPin] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');
 
@@ -24,16 +26,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     const targetUser = users.find(u => u.id === selectedUserId);
     if (!targetUser) return;
 
-    // Check PIN (or master override)
-    if (targetUser.pin === pin || pin === 'admin123') {
-      loginWithPin(targetUser.id, pin);
+    const res = login(pin, targetUser.id);
+    if (res.success) {
       setPin('');
       onClose();
       if (onSuccessNotice) {
         onSuccessNotice(`Logged in as ${targetUser.name} (${targetUser.role.toUpperCase()})`);
       }
     } else {
-      setErrorMsg('Incorrect PIN. (Default Admin PIN: admin123, Operator PIN: 1234)');
+      setErrorMsg(res.message || 'Incorrect PIN. (Default Admin PIN: admin123, Operator PIN: 1234)');
     }
   };
 
@@ -117,7 +118,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               <p className="mt-1.5 text-xs text-rose-600 font-medium">{errorMsg}</p>
             )}
             <p className="mt-1 text-xs text-slate-500">
-              Demo defaults: Admin: <code className="font-mono text-slate-700">admin123</code> | Operators: <code className="font-mono text-slate-700">1234</code>
+              Staff credentials: Admin: <code className="font-mono text-slate-700">admin123</code> | Operators: <code className="font-mono text-slate-700">1234</code>
             </p>
           </div>
 

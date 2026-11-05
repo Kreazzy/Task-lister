@@ -277,7 +277,7 @@ export const UserManagerView: React.FC<UserManagerViewProps> = ({
       {/* Staff Roster Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {userStats.map(user => {
-          const isCurrent = user.id === currentUser.id;
+          const isCurrent = user.id === currentUser?.id;
 
           return (
             <div

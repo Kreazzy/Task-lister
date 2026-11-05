@@ -3,23 +3,26 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TaskProvider, useTasks } from './context/TaskContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { HistoryProvider, useHistory } from './context/HistoryContext';
+import { SettingsProvider, useSettings } from './context/SettingsContext';
 import { Header } from './components/Header';
 import { ChecklistView } from './components/ChecklistView';
 import { AnalyticsView } from './components/AnalyticsView';
 import { CategoryManagerView } from './components/CategoryManagerView';
 import { UserManagerView } from './components/UserManagerView';
+import { LoginScreen } from './components/LoginScreen';
 import { EmailExportModal } from './components/modals/EmailExportModal';
 import { BackupModal } from './components/modals/BackupModal';
 import { TaskEditModal } from './components/modals/TaskEditModal';
 import { AuthModal } from './components/modals/AuthModal';
+import { PortalSettingsModal } from './components/modals/PortalSettingsModal';
 import { NoticeModal } from './components/modals/NoticeModal';
 import { ConfirmModal } from './components/modals/ConfirmModal';
 import { ViewTab, TaskItem } from './types';
-import { Plus, Mail, FileJson, Printer, RotateCcw, ShieldCheck } from 'lucide-react';
+import { Plus, Mail, FileJson, Printer, Sliders, ShieldCheck } from 'lucide-react';
 
 const DashboardContent: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<ViewTab>('checklist');
@@ -28,6 +31,7 @@ const DashboardContent: React.FC = () => {
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isPortalSettingsOpen, setIsPortalSettingsOpen] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [taskModalSectionKey, setTaskModalSectionKey] = useState<string | undefined>();
   const [taskModalIndex, setTaskModalIndex] = useState<number | undefined>();
@@ -62,12 +66,48 @@ const DashboardContent: React.FC = () => {
     onConfirm: () => {},
   });
 
-  const { deleteTask, deleteSection, resetMasterData } = useTasks();
-  const { viewingDateStr, resetDay } = useHistory();
-  const { isAdmin, deleteUser } = useAuth();
+  const { deleteTask, deleteSection, resetMasterData, importMasterData } = useTasks();
+  const { viewingDateStr, resetDay, importHistory } = useHistory();
+  const { isAdmin, deleteUser, importUsers } = useAuth();
+  const { updateSettings } = useSettings();
+
+  // Multi-user Real-time polling via Express Backend
+  useEffect(() => {
+    let isMounted = true;
+
+    const syncFromServer = async () => {
+      try {
+        const res = await fetch('/api/data');
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          if (data.historyDB) importHistory(data.historyDB);
+          if (data.tasksMaster && data.sectionsConfig) {
+            importMasterData(data.sectionsConfig, data.tasksMaster, data.slaMilestones);
+          }
+          if (data.usersDB) importUsers(data.usersDB);
+          if (data.appSettings) updateSettings(data.appSettings);
+        }
+      } catch {
+        // Offline or static Netlify fallback
+      }
+    };
+
+    // Initial sync
+    syncFromServer();
+
+    // Poll every 3 seconds for live multi-user collaboration
+    const interval = setInterval(syncFromServer, 3000);
+    window.addEventListener('focus', syncFromServer);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      window.removeEventListener('focus', syncFromServer);
+    };
+  }, []);
 
   // Enforce operator role restriction: operators can only view and fill out the checklist
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isAdmin && currentTab !== 'checklist') {
       setCurrentTab('checklist');
     }
@@ -179,6 +219,7 @@ const DashboardContent: React.FC = () => {
           onOpenEmailModal={() => setIsEmailModalOpen(true)}
           onOpenBackupModal={() => setIsBackupModalOpen(true)}
           onOpenAuthModal={() => setIsAuthModalOpen(true)}
+          onOpenPortalSettings={() => setIsPortalSettingsOpen(true)}
           onRequestResetDay={handleRequestResetDay}
         />
 
@@ -215,7 +256,7 @@ const DashboardContent: React.FC = () => {
           )}
         </main>
 
-        {/* Quiet Credit & Institutional Footer */}
+        {/* Institutional Footer */}
         <footer className="mt-12 text-center text-xs text-slate-500 py-4 border-t border-slate-200 space-y-1">
           <div>Soneri Bank Limited · Information Technology Operations Directorate</div>
           <div className="text-[11px] text-slate-400">
@@ -224,23 +265,33 @@ const DashboardContent: React.FC = () => {
         </footer>
       </div>
 
-      {/* Floating Quick Action Bar (Right side on desktop, bottom on mobile) */}
+      {/* Floating Quick Action Bar (Right side on desktop) */}
       <div className="fixed right-4 top-1/2 -translate-y-1/2 hidden xl:flex flex-col gap-2 z-40 bg-white/95 p-2 rounded-xl shadow-lg border border-slate-200 backdrop-blur-xs">
         <button
           type="button"
           onClick={() => setIsEmailModalOpen(true)}
-          className="flex items-center gap-2 p-2.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-white hover:bg-sky-600 transition-colors"
+          className="flex items-center gap-2 p-2.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-white hover:bg-sky-600 transition-colors cursor-pointer"
           title="Email / Excel Formatted Export"
         >
           <Mail className="w-4 h-4 text-sky-600" />
-          <span className="hidden group-hover:inline">Email Report</span>
         </button>
 
         {isAdmin && (
           <button
             type="button"
+            onClick={() => setIsPortalSettingsOpen(true)}
+            className="flex items-center gap-2 p-2.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-white hover:bg-amber-600 transition-colors cursor-pointer"
+            title="Portal Controls: Theme Colors & Layout (Admin)"
+          >
+            <Sliders className="w-4 h-4 text-amber-600" />
+          </button>
+        )}
+
+        {isAdmin && (
+          <button
+            type="button"
             onClick={() => setIsBackupModalOpen(true)}
-            className="flex items-center gap-2 p-2.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-white hover:bg-blue-600 transition-colors"
+            className="flex items-center gap-2 p-2.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-white hover:bg-blue-600 transition-colors cursor-pointer"
             title="JSON Backup & Restore (Admin)"
           >
             <FileJson className="w-4 h-4 text-blue-600" />
@@ -251,7 +302,7 @@ const DashboardContent: React.FC = () => {
           <button
             type="button"
             onClick={() => handleOpenAddTask()}
-            className="flex items-center gap-2 p-2.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-white hover:bg-emerald-600 transition-colors"
+            className="flex items-center gap-2 p-2.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-white hover:bg-emerald-600 transition-colors cursor-pointer"
             title="Add New SOP Task"
           >
             <Plus className="w-4 h-4 text-emerald-600" />
@@ -261,8 +312,8 @@ const DashboardContent: React.FC = () => {
         <button
           type="button"
           onClick={() => setIsAuthModalOpen(true)}
-          className="flex items-center gap-2 p-2.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-white hover:bg-purple-600 transition-colors"
-          title="User & Role Switch"
+          className="flex items-center gap-2 p-2.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-white hover:bg-purple-600 transition-colors cursor-pointer"
+          title="Switch Staff Profile"
         >
           <ShieldCheck className="w-4 h-4 text-purple-600" />
         </button>
@@ -270,7 +321,7 @@ const DashboardContent: React.FC = () => {
         <button
           type="button"
           onClick={() => window.print()}
-          className="flex items-center gap-2 p-2.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-white hover:bg-slate-700 transition-colors"
+          className="flex items-center gap-2 p-2.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
           title="Print Checklist Sheet"
         >
           <Printer className="w-4 h-4 text-slate-600" />
@@ -294,6 +345,12 @@ const DashboardContent: React.FC = () => {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onSuccessNotice={msg => showNotice('Authentication', msg, 'success')}
+      />
+
+      <PortalSettingsModal
+        isOpen={isPortalSettingsOpen}
+        onClose={() => setIsPortalSettingsOpen(false)}
+        onSuccessNotice={msg => showNotice('Portal Customization', msg, 'success')}
       />
 
       <TaskEditModal
@@ -326,14 +383,27 @@ const DashboardContent: React.FC = () => {
   );
 };
 
+// Security Gate Wrapper: asks for login first if user is not authenticated
+const MainApp: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return <LoginScreen />;
+  }
+
+  return <DashboardContent />;
+};
+
 export default function App() {
   return (
-    <TaskProvider>
-      <AuthProvider>
-        <HistoryProvider>
-          <DashboardContent />
-        </HistoryProvider>
-      </AuthProvider>
-    </TaskProvider>
+    <SettingsProvider>
+      <TaskProvider>
+        <AuthProvider>
+          <HistoryProvider>
+            <MainApp />
+          </HistoryProvider>
+        </AuthProvider>
+      </TaskProvider>
+    </SettingsProvider>
   );
 }

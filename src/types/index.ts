@@ -17,6 +17,7 @@ export interface TaskItem {
   task: string;
   profile: ProfileCategory | string;
   note?: string;
+  order?: number;
 }
 
 export interface SectionConfig {
@@ -60,3 +61,15 @@ export interface SlaMilestone {
 }
 
 export type ViewTab = 'checklist' | 'analytics' | 'categories' | 'users';
+
+export type ThemePalette = 'bank-blue' | 'islamic-emerald' | 'royal-indigo' | 'corporate-amber' | 'midnight-dark';
+export type LayoutDensity = 'comfortable' | 'compact';
+export type LayoutFormat = 'sections' | 'timeline';
+
+export interface AppSettings {
+  theme: ThemePalette;
+  density: LayoutDensity;
+  layoutFormat: LayoutFormat;
+  portalTitle: string;
+  portalSubtitle: string;
+}

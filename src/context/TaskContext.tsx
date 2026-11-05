@@ -11,8 +11,17 @@ interface TaskContextType {
   addSection: (title: string, description?: string) => string;
   deleteSection: (key: string) => boolean;
   reorderSections: (newSections: SectionConfig[]) => void;
-  addTask: (sectionKey: string, taskData: Omit<TaskItem, 'sr'> & { sr?: number }) => { success: boolean; sr: number; wasCorrected: boolean };
-  editTask: (sectionKey: string, index: number, updated: TaskItem) => { success: boolean; sr: number; wasCorrected: boolean };
+  addTask: (
+    sectionKey: string,
+    taskData: Omit<TaskItem, 'sr'> & { sr?: number },
+    insertPosition?: number
+  ) => { success: boolean; sr: number; wasCorrected: boolean };
+  editTask: (
+    sectionKey: string,
+    index: number,
+    updated: TaskItem,
+    newPosition?: number
+  ) => { success: boolean; sr: number; wasCorrected: boolean };
   deleteTask: (sectionKey: string, index: number) => void;
   reorderTasks: (
     sectionKey: string,
@@ -88,7 +97,7 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return DEFAULT_SLA_MILESTONES;
   });
 
-  // Save to localStorage on change
+  // Save to localStorage on change and sync to server if available
   useEffect(() => {
     try {
       localStorage.setItem('sbl_sections_config_v1', JSON.stringify(sectionsConfig));
@@ -143,11 +152,19 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       title: title.trim(),
       description: description?.trim() || undefined,
     };
-    setSectionsConfig(prev => [...prev, newSection]);
-    setTasksMaster(prev => ({
-      ...prev,
-      [key]: [],
-    }));
+    const nextSections = [...sectionsConfig, newSection];
+    const nextTasks = { ...tasksMaster, [key]: [] };
+
+    setSectionsConfig(nextSections);
+    setTasksMaster(nextTasks);
+
+    // Sync to backend
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sectionsConfig: nextSections, tasksMaster: nextTasks }),
+    }).catch(() => {});
+
     return key;
   };
 
@@ -155,33 +172,53 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (sectionsConfig.length <= 1) {
       return false;
     }
-    setSectionsConfig(prev => prev.filter(s => s.key !== key));
-    setTasksMaster(prev => {
-      const copy = { ...prev };
-      delete copy[key];
-      return copy;
-    });
+    const nextSections = sectionsConfig.filter(s => s.key !== key);
+    const nextTasks = { ...tasksMaster };
+    delete nextTasks[key];
+
+    setSectionsConfig(nextSections);
+    setTasksMaster(nextTasks);
+
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sectionsConfig: nextSections, tasksMaster: nextTasks }),
+    }).catch(() => {});
+
     return true;
   };
 
   const reorderSections = (newSections: SectionConfig[]) => {
     setSectionsConfig(newSections);
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sectionsConfig: newSections }),
+    }).catch(() => {});
   };
 
   const addTask = (
     sectionKey: string,
-    taskData: Omit<TaskItem, 'sr'> & { sr?: number }
+    taskData: Omit<TaskItem, 'sr'> & { sr?: number },
+    insertPosition?: number
   ): { success: boolean; sr: number; wasCorrected: boolean } => {
-    let sr = taskData.sr;
+    const currentList = tasksMaster[sectionKey] ? [...tasksMaster[sectionKey]] : [];
+
+    // Calculate base serial number for this category
+    const baseSr = currentList.length > 0
+      ? Math.min(...currentList.map(t => t.sr))
+      : getNextGlobalSr();
+
+    let targetSr = taskData.sr;
     let wasCorrected = false;
 
-    if (!sr || isSrTaken(sr)) {
-      sr = getNextGlobalSr();
+    if (!targetSr || isSrTaken(targetSr)) {
+      targetSr = getNextGlobalSr();
       wasCorrected = true;
     }
 
     const newTask: TaskItem = {
-      sr,
+      sr: targetSr,
       nature: taskData.nature.trim() || 'Daily',
       time: taskData.time.trim() || '-',
       task: taskData.task.trim(),
@@ -189,35 +226,54 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       note: taskData.note?.trim() || undefined,
     };
 
-    setTasksMaster(prev => {
-      const currentList = prev[sectionKey] ? [...prev[sectionKey]] : [];
-      currentList.push(newTask);
-      currentList.sort((a, b) => a.sr - b.sr);
-      return {
-        ...prev,
-        [sectionKey]: currentList,
-      };
-    });
+    // Determine target index: 0-indexed position
+    let insertIdx = currentList.length;
+    if (typeof insertPosition === 'number' && insertPosition >= 0 && insertPosition <= currentList.length) {
+      insertIdx = insertPosition;
+    }
 
-    return { success: true, sr, wasCorrected };
+    currentList.splice(insertIdx, 0, newTask);
+
+    // Sequentially assign serial numbers so order matches visual placement
+    const updatedList = currentList.map((item, idx) => ({
+      ...item,
+      sr: baseSr + idx,
+    }));
+
+    const finalAssignedSr = updatedList[insertIdx]?.sr || targetSr;
+
+    const nextTasksMaster = {
+      ...tasksMaster,
+      [sectionKey]: updatedList,
+    };
+
+    setTasksMaster(nextTasksMaster);
+
+    // Sync to backend
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tasksMaster: nextTasksMaster }),
+    }).catch(() => {});
+
+    return { success: true, sr: finalAssignedSr, wasCorrected };
   };
 
   const editTask = (
     sectionKey: string,
     index: number,
-    updated: TaskItem
+    updated: TaskItem,
+    newPosition?: number
   ): { success: boolean; sr: number; wasCorrected: boolean } => {
-    let sr = updated.sr;
-    let wasCorrected = false;
-
-    if (isSrTaken(sr, sectionKey, index)) {
-      sr = getNextGlobalSr();
-      wasCorrected = true;
+    const currentList = tasksMaster[sectionKey] ? [...tasksMaster[sectionKey]] : [];
+    if (index < 0 || index >= currentList.length) {
+      return { success: false, sr: updated.sr, wasCorrected: false };
     }
+
+    const baseSr = Math.min(...currentList.map(t => t.sr));
 
     const updatedTask: TaskItem = {
       ...updated,
-      sr,
       nature: updated.nature.trim() || 'Daily',
       time: updated.time.trim() || '-',
       task: updated.task.trim(),
@@ -225,28 +281,63 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       note: updated.note?.trim() || undefined,
     };
 
-    setTasksMaster(prev => {
-      const currentList = prev[sectionKey] ? [...prev[sectionKey]] : [];
-      currentList[index] = updatedTask;
-      currentList.sort((a, b) => a.sr - b.sr);
-      return {
-        ...prev,
-        [sectionKey]: currentList,
-      };
-    });
+    // Replace item
+    currentList[index] = updatedTask;
 
-    return { success: true, sr, wasCorrected };
+    // If new position requested and different from current index
+    if (typeof newPosition === 'number' && newPosition >= 0 && newPosition < currentList.length && newPosition !== index) {
+      const [moved] = currentList.splice(index, 1);
+      currentList.splice(newPosition, 0, moved);
+    }
+
+    // Renumber sequentially
+    const updatedList = currentList.map((item, idx) => ({
+      ...item,
+      sr: baseSr + idx,
+    }));
+
+    const nextTasksMaster = {
+      ...tasksMaster,
+      [sectionKey]: updatedList,
+    };
+
+    setTasksMaster(nextTasksMaster);
+
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tasksMaster: nextTasksMaster }),
+    }).catch(() => {});
+
+    const targetIndex = typeof newPosition === 'number' ? newPosition : index;
+    return { success: true, sr: updatedList[targetIndex]?.sr || updated.sr, wasCorrected: false };
   };
 
   const deleteTask = (sectionKey: string, index: number) => {
-    setTasksMaster(prev => {
-      const currentList = prev[sectionKey] ? [...prev[sectionKey]] : [];
-      currentList.splice(index, 1);
-      return {
-        ...prev,
-        [sectionKey]: currentList,
-      };
-    });
+    const currentList = tasksMaster[sectionKey] ? [...tasksMaster[sectionKey]] : [];
+    if (index < 0 || index >= currentList.length) return;
+
+    const baseSr = Math.min(...currentList.map(t => t.sr));
+    currentList.splice(index, 1);
+
+    // Renumber remaining tasks
+    const updatedList = currentList.map((item, idx) => ({
+      ...item,
+      sr: baseSr + idx,
+    }));
+
+    const nextTasksMaster = {
+      ...tasksMaster,
+      [sectionKey]: updatedList,
+    };
+
+    setTasksMaster(nextTasksMaster);
+
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tasksMaster: nextTasksMaster }),
+    }).catch(() => {});
   };
 
   const reorderTasks = (
@@ -257,7 +348,12 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   ): { success: boolean; srMapping: Record<number, number> } => {
     if (fromIndex === toIndex) return { success: false, srMapping: {} };
     const currentList = tasksMaster[sectionKey] ? [...tasksMaster[sectionKey]] : [];
-    if (fromIndex < 0 || fromIndex >= currentList.length || toIndex < 0 || toIndex >= currentList.length) {
+    if (
+      fromIndex < 0 ||
+      fromIndex >= currentList.length ||
+      toIndex < 0 ||
+      toIndex >= currentList.length
+    ) {
       return { success: false, srMapping: {} };
     }
 
@@ -265,13 +361,14 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [movedTask] = currentList.splice(fromIndex, 1);
     currentList.splice(toIndex, 0, movedTask);
 
-    // Existing Sr# numbers in ascending order for this section
-    const sortedSrs = (tasksMaster[sectionKey] || []).map(t => t.sr).sort((a, b) => a - b);
+    // Calculate base Sr for this section (e.g. 1 for morn, 18 for daily, etc.)
+    const allSrs = (tasksMaster[sectionKey] || []).map(t => t.sr);
+    const baseSr = allSrs.length > 0 ? Math.min(...allSrs) : 1;
 
     // Renumber sequentially matching the new visual order
     const srMapping: Record<number, number> = {};
     const updatedList = currentList.map((item, idx) => {
-      const newSr = sortedSrs[idx] !== undefined ? sortedSrs[idx] : (idx + 1);
+      const newSr = baseSr + idx;
       if (item.sr !== newSr) {
         srMapping[item.sr] = newSr;
       }
@@ -281,10 +378,12 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
     });
 
-    setTasksMaster(prev => ({
-      ...prev,
+    const nextTasksMaster = {
+      ...tasksMaster,
       [sectionKey]: updatedList,
-    }));
+    };
+
+    setTasksMaster(nextTasksMaster);
 
     // Update SLA milestones if any taskKey changed
     if (Object.keys(srMapping).length > 0) {
@@ -309,6 +408,20 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     }
 
+    // Inform server endpoint
+    fetch('/api/tasks/reorder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sectionKey, fromIndex, toIndex }),
+    }).catch(() => {
+      // Fallback direct sync
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tasksMaster: nextTasksMaster }),
+      }).catch(() => {});
+    });
+
     return { success: true, srMapping };
   };
 
@@ -317,22 +430,47 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       ...slaData,
       id: `sla-${Date.now().toString(36)}`,
     };
-    setSlaMilestones(prev => [...prev, newSla]);
+    const nextSlas = [...slaMilestones, newSla];
+    setSlaMilestones(nextSlas);
+
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slaMilestones: nextSlas }),
+    }).catch(() => {});
+
     return newSla;
   };
 
   const updateSla = (id: string, updates: Partial<Omit<SlaMilestone, 'id'>>) => {
-    setSlaMilestones(prev =>
-      prev.map(sla => (sla.id === id ? { ...sla, ...updates } : sla))
-    );
+    const nextSlas = slaMilestones.map(sla => (sla.id === id ? { ...sla, ...updates } : sla));
+    setSlaMilestones(nextSlas);
+
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slaMilestones: nextSlas }),
+    }).catch(() => {});
   };
 
   const deleteSla = (id: string) => {
-    setSlaMilestones(prev => prev.filter(sla => sla.id !== id));
+    const nextSlas = slaMilestones.filter(sla => sla.id !== id);
+    setSlaMilestones(nextSlas);
+
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slaMilestones: nextSlas }),
+    }).catch(() => {});
   };
 
   const resetSlas = () => {
     setSlaMilestones(DEFAULT_SLA_MILESTONES);
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slaMilestones: DEFAULT_SLA_MILESTONES }),
+    }).catch(() => {});
   };
 
   const importMasterData = (
@@ -355,6 +493,16 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setSectionsConfig(DEFAULT_SECTIONS_CONFIG);
     setTasksMaster(DEFAULT_MASTER_TASKS);
     setSlaMilestones(DEFAULT_SLA_MILESTONES);
+
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sectionsConfig: DEFAULT_SECTIONS_CONFIG,
+        tasksMaster: DEFAULT_MASTER_TASKS,
+        slaMilestones: DEFAULT_SLA_MILESTONES,
+      }),
+    }).catch(() => {});
   };
 
   return (

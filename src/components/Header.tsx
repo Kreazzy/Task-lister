@@ -10,10 +10,13 @@ import {
   BarChart3,
   CheckSquare,
   Users,
+  LogOut,
+  Sliders,
 } from 'lucide-react';
 import { ViewTab } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useHistory } from '../context/HistoryContext';
+import { useSettings } from '../context/SettingsContext';
 
 interface HeaderProps {
   currentTab: ViewTab;
@@ -21,6 +24,7 @@ interface HeaderProps {
   onOpenEmailModal: () => void;
   onOpenBackupModal: () => void;
   onOpenAuthModal: () => void;
+  onOpenPortalSettings: () => void;
   onRequestResetDay: () => void;
 }
 
@@ -30,9 +34,11 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenEmailModal,
   onOpenBackupModal,
   onOpenAuthModal,
+  onOpenPortalSettings,
   onRequestResetDay,
 }) => {
-  const { currentUser, isAdmin } = useAuth();
+  const { currentUser, isAdmin, logout } = useAuth();
+  const { settings } = useSettings();
   const {
     todayDateStr,
     viewingDateStr,
@@ -52,23 +58,74 @@ export const Header: React.FC<HeaderProps> = ({
     day: 'numeric',
   });
 
+  // Dynamic theme accent border and button classes
+  const getThemeAccentClass = () => {
+    switch (settings.theme) {
+      case 'islamic-emerald':
+        return 'border-emerald-600';
+      case 'royal-indigo':
+        return 'border-indigo-600';
+      case 'corporate-amber':
+        return 'border-amber-600';
+      case 'midnight-dark':
+        return 'border-slate-500';
+      case 'bank-blue':
+      default:
+        return 'border-blue-600';
+    }
+  };
+
+  const getThemeBadgeBg = () => {
+    switch (settings.theme) {
+      case 'islamic-emerald':
+        return 'bg-emerald-600';
+      case 'royal-indigo':
+        return 'bg-indigo-600';
+      case 'corporate-amber':
+        return 'bg-amber-600';
+      case 'midnight-dark':
+        return 'bg-slate-700';
+      case 'bank-blue':
+      default:
+        return 'bg-blue-600';
+    }
+  };
+
+  const getActiveTabClass = () => {
+    switch (settings.theme) {
+      case 'islamic-emerald':
+        return 'bg-emerald-600 text-white shadow-xs';
+      case 'royal-indigo':
+        return 'bg-indigo-600 text-white shadow-xs';
+      case 'corporate-amber':
+        return 'bg-amber-600 text-white shadow-xs';
+      case 'midnight-dark':
+        return 'bg-slate-700 text-white shadow-xs';
+      case 'bank-blue':
+      default:
+        return 'bg-blue-600 text-white shadow-xs';
+    }
+  };
+
   return (
-    <header className="bg-slate-900 text-white rounded-xl shadow-lg border-t-4 border-blue-600 mb-6 overflow-hidden">
+    <header className={`bg-slate-900 text-white rounded-xl shadow-lg border-t-4 ${getThemeAccentClass()} mb-6 overflow-hidden`}>
       {/* Top Bar Zone: Brand | Navigation Tabs (Admin only) | Active User & Actions */}
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between px-6 py-4 border-b border-slate-800 gap-4">
         {/* Brand Zone */}
         <div className="flex items-center gap-3 shrink-0">
-          <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center font-black text-white text-lg tracking-wider shadow-sm">
+          <div className={`w-9 h-9 rounded-lg ${getThemeBadgeBg()} flex items-center justify-center font-black text-white text-lg tracking-wider shadow-sm`}>
             SB
           </div>
           <div>
             <h1 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-              Soneri Bank Limited
+              {settings.portalTitle || 'Soneri Bank Limited'}
               <span className="text-xs font-mono font-medium px-2 py-0.5 rounded-sm bg-slate-800 text-slate-300 border border-slate-700">
                 IT Ops V5.0
               </span>
             </h1>
-            <p className="text-xs text-slate-400">Core Banking Operations & Handover Portal</p>
+            <p className="text-xs text-slate-400">
+              {settings.portalSubtitle || 'Core Banking Operations & Handover Portal'}
+            </p>
           </div>
         </div>
 
@@ -80,7 +137,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => onSelectTab('checklist')}
               className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
                 currentTab === 'checklist'
-                  ? 'bg-blue-600 text-white shadow-xs'
+                  ? getActiveTabClass()
                   : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
               }`}
             >
@@ -93,7 +150,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => onSelectTab('analytics')}
               className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
                 currentTab === 'analytics'
-                  ? 'bg-blue-600 text-white shadow-xs'
+                  ? getActiveTabClass()
                   : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
               }`}
             >
@@ -106,7 +163,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => onSelectTab('categories')}
               className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
                 currentTab === 'categories'
-                  ? 'bg-blue-600 text-white shadow-xs'
+                  ? getActiveTabClass()
                   : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
               }`}
             >
@@ -119,7 +176,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => onSelectTab('users')}
               className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
                 currentTab === 'users'
-                  ? 'bg-blue-600 text-white shadow-xs'
+                  ? getActiveTabClass()
                   : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
               }`}
             >
@@ -137,17 +194,17 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* User Account & Shift Utility Actions */}
         <div className="flex items-center flex-wrap gap-2.5 shrink-0">
-          {/* Active User Switcher */}
+          {/* Active User Badge / Switcher */}
           <button
             type="button"
             onClick={onOpenAuthModal}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 transition-colors"
-            title="Click to switch active user or verify admin rights"
+            title="Click to switch active user or verify credentials"
           >
             <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-[10px]">
-              {currentUser.initials}
+              {currentUser?.initials || 'SB'}
             </div>
-            <span className="font-medium truncate max-w-[120px]">{currentUser.name}</span>
+            <span className="font-medium truncate max-w-[120px]">{currentUser?.name || 'Staff User'}</span>
             <span
               className={`text-[10px] uppercase font-bold px-1.5 py-0.2 rounded-xs ${
                 isAdmin
@@ -155,12 +212,24 @@ export const Header: React.FC<HeaderProps> = ({
                   : 'bg-emerald-900/60 text-emerald-300 border border-emerald-700/50'
               }`}
             >
-              {isAdmin ? 'Admin' : 'Operation Officer'}
+              {isAdmin ? 'Admin' : 'Operator'}
             </span>
           </button>
 
           {/* Quick Action Tools */}
           <div className="flex items-center gap-1.5">
+            {/* Admin Appearance / Format Settings */}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={onOpenPortalSettings}
+                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors"
+                title="Portal Controls: Theme Colors, Layout & Density (Admin)"
+              >
+                <Sliders className="w-4 h-4 text-amber-400" />
+              </button>
+            )}
+
             <button
               type="button"
               onClick={onOpenEmailModal}
@@ -200,6 +269,16 @@ export const Header: React.FC<HeaderProps> = ({
                 <RotateCcw className="w-4 h-4 text-rose-400" />
               </button>
             )}
+
+            {/* Logout / Lock Session */}
+            <button
+              type="button"
+              onClick={logout}
+              className="p-2 rounded-lg bg-slate-800 hover:bg-rose-900/40 text-slate-300 hover:text-rose-400 border border-slate-700 transition-colors ml-1"
+              title="Lock & Log Out Session"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
