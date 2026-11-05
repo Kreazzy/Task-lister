@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soneri Bank Limited - IT Operation Task List</title>
+    <style>
+        :root {
+            --primary: #1a56db;
+            --primary-hover: #1d4ed8;
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --border: #d1d5db;
+            --success: #059669;
+            --success-bg: #f0fdf4;
+            --header-bg: #111827;
+            --accent: #38bdf8;
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        body { background: var(--bg); color: var(--text-main); margin: 0; padding: 16px; padding-right: 90px; padding-bottom: 90px; }
+        .container { max-width: 1250px; margin: 0 auto; }
+
+        .doc-header {
+            background: var(--header-bg);
+            color: #fff;
+            border-radius: 10px;
+            padding: 18px 22px;
+            margin-bottom: 18px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.15);
+            border-top: 4px solid var(--primary);
+        }
+        .doc-header .top-row { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; }
+        .doc-header h1 { margin: 0; font-size: 1.35rem; letter-spacing: -0.2px; font-weight: 700; color: #ffffff; }
+        .doc-header .sub { font-size: 0.85rem; color: #9ca3af; margin-top: 3px; font-weight: 500; }
+        
+        .header-badges { display: flex; gap: 8px; align-items: center; }
+        .version-badge { background: #374151; color: #e5e7eb; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+        .admin-badge { background: #7c3aed; color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; display: none; }
+
+        .meta-row { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; flex-wrap: wrap; gap: 12px; }
+        .live-date-box { font-size: 0.8rem; font-weight: 500; color: var(--accent); background: #1f2937; padding: 8px 14px; border-radius: 8px; border: 1px solid #374151; display: flex; align-items: center; gap: 8px; }
+        .view-date-box { font-size: 0.85rem; font-weight: 600; color: #fbbf24; background: #1f2937; padding: 6px 12px; border-radius: 8px; border: 1px solid #92400e; display: flex; align-items: center; gap: 6px; }
+        .view-date-box select { background: #111827; color: #fbbf24; border: 1px solid #92400e; border-radius: 5px; padding: 3px 6px; font-size: 0.8rem; }
+        .view-date-box .btn-icon { color: #fbbf24; }
+
+        .save-status-box { display: flex; align-items: center; gap: 10px; font-size: 0.78rem; color: #9ca3af; }
+        .status-badge { background: #065f46; color: #34d399; padding: 4px 10px; border-radius: 12px; font-weight: 600; font-size: 0.72rem; display: flex; align-items: center; gap: 5px; }
+        .status-dot { width: 6px; height: 6px; background: #34d399; border-radius: 50%; display: inline-block; }
+
+        .overall-progress { margin-top: 14px; }
+        .bar-bg { background: #374151; border-radius: 8px; height: 10px; overflow: hidden; }
+        .bar-fill { background: var(--success); height: 100%; width: 0%; transition: width 0.4s ease-in-out; }
+        .overall-progress .label { font-size: 0.78rem; color: #d1d5db; margin-bottom: 5px; display: flex; justify-content: space-between; font-weight: 600; }
+
+        /* Shown only when browsing a past date via the "Viewing" dropdown, so nobody
+           forgets they're editing history rather than today's live shift. */
+        .history-banner {
+            display: none; background: #fffbeb; border: 1px solid #f59e0b; color: #92400e;
+            padding: 10px 16px; border-radius: 8px; margin-bottom: 14px; font-size: 0.85rem;
+            font-weight: 600; align-items: center; gap: 8px;
+        }
+
+        .search-container { margin-bottom: 18px; position: sticky; top: 12px; z-index: 100; }
+        #taskSearch {
+            width: 100%; padding: 12px 20px; border-radius: 24px; border: 1px solid var(--border);
+            box-shadow: 0 4px 10px rgba(0,0,0,.06); font-size: 0.95rem; outline: none; background: #ffffff;
+            transition: all 0.2s;
+        }
+        #taskSearch:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,86,219,0.15); }
+
+        .section-card {
+            background: var(--card-bg); border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,.05);
+            margin-bottom: 22px; overflow: hidden; border: 1px solid var(--border);
+        }
+        .section-header {
+            background: #eef2ff; padding: 12px 18px; font-weight: 700; color: var(--primary);
+            border-bottom: 2px solid var(--border); display: flex; justify-content: space-between; align-items: center;
+            font-size: 0.95rem; text-transform: uppercase; letter-spacing: .3px;
+        }
+        .section-header-right { display: flex; align-items: center; gap: 8px; text-transform: none; }
+        .progress-mini { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; text-transform: none; background: #ffffff; padding: 3px 8px; border-radius: 12px; border: 1px solid #cbd5e1; }
+        .section-admin-btn { background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        th { background: #f8fafc; text-align: left; padding: 10px; font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+        td { padding: 8px 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        tr:hover { background: #fafafa; }
+        tr.completed { background: var(--success-bg); }
+        tr.completed .task-desc { text-decoration: line-through; color: var(--text-muted); opacity: .75; }
+
+        .sr { color: #6b7280; font-weight: 700; width: 34px; text-align: center; }
+        .nature { color: var(--text-muted); white-space: nowrap; font-weight: 500; }
+        .time-col { color: var(--text-muted); white-space: nowrap; font-weight: 500; }
+        .task-desc { font-weight: 500; color: var(--text-main); }
+        .note { color: #0284c7; font-size: 0.74rem; font-weight: 500; margin-top: 2px; }
+
+        input[type="checkbox"] { width: 19px; height: 19px; cursor: pointer; accent-color: var(--success); }
+        input[type="text"], input[type="number"] {
+            border: 1px solid var(--border); padding: 5px 8px; border-radius: 5px; width: 100%;
+            font-size: 0.8rem; background: #fff; color: var(--text-main); transition: border-color 0.2s;
+        }
+        input[type="text"]:focus, input[type="number"]:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(26,86,219,0.15); }
+        input:disabled { background: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
+
+        .badge { padding: 3px 7px; border-radius: 4px; font-size: 0.63rem; font-weight: 700; text-transform: uppercase; white-space: nowrap; display: inline-block; }
+        .badge-utility { background: #dcfce7; color: #166534; }
+        .badge-browser { background: #dbeafe; color: #1e40af; }
+        .badge-server { background: #fee2e2; color: #991b1b; }
+        .badge-email { background: #fef3c7; color: #92400e; }
+        .badge-validation { background: #ede9fe; color: #5b21b6; }
+        .badge-service { background: #cffafe; color: #155e75; }
+        .badge-other { background: #f3f4f6; color: #374151; }
+
+        .footnote { font-size: 0.75rem; color: var(--text-muted); padding: 10px 18px; background: #fafafa; border-top: 1px solid #eee; }
+
+        /* Small, unobtrusive credit line at the very bottom of the page. */
+        .credit-footer {
+            text-align: center; font-size: 0.72rem; color: #9ca3af; letter-spacing: 1.5px;
+            padding: 1px 1 1px 1; opacity: 0.50;
+        }
+        .credit-footer strong { color: #6b7280; font-weight: 700; }
+
+        .vertical-controls {
+            position: fixed; right: 14px; top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column; gap: 8px; z-index: 1000;
+            background: rgba(255,255,255,0.92); padding: 10px 8px; border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15); border: 1px solid var(--border);
+            backdrop-filter: blur(8px);
+        }
+        .vertical-controls button {
+            padding: 9px 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600;
+            font-size: 0.78rem; display: flex; align-items: center; gap: 6px; white-space: nowrap;
+            transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.06); text-align: left;
+        }
+        .vertical-controls button:hover { transform: translateX(-3px); }
+        .vertical-controls button:active { transform: scale(0.96); }
+
+        .btn-email { background: #0284c7; color: #fff; }
+        .btn-backup { background: #2563eb; color: #fff; }
+        .btn-import { background: #4f46e5; color: #fff; }
+        .btn-admin { background: #7c3aed; color: #fff; }
+        .btn-add { background: #059669; color: #fff; display: none; }
+        .btn-section { background: #0d9488; color: #fff; display: none; }
+        .btn-reset { background: #ef4444; color: #fff; }
+        .btn-print { background: #374151; color: #fff; }
+
+        .admin-col { display: none; text-align: center; width: 70px; }
+        .btn-icon { background: none; border: none; cursor: pointer; font-size: 0.9rem; padding: 2px 4px; box-shadow: none; }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(3px); z-index: 2000;
+            display: none; align-items: center; justify-content: center; padding: 16px;
+        }
+        .modal-card {
+            background: #fff; border-radius: 12px; max-width: 750px; width: 100%; max-height: 90vh;
+            overflow-y: auto; padding: 22px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative;
+        }
+        .modal-header { font-size: 1.15rem; font-weight: 700; color: var(--header-bg); margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
+        .modal-close { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--text-muted); box-shadow: none; padding: 0; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: var(--text-main); }
+        .form-group .hint { display: block; font-size: 0.72rem; font-weight: 400; color: var(--text-muted); margin-top: 3px; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.85rem;
+        }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
+        @media (max-width: 768px) {
+            body { padding-right: 12px; padding-bottom: 110px; }
+            .vertical-controls {
+                top: auto; bottom: 10px; right: 50%; transform: translateX(50%);
+                flex-direction: row; flex-wrap: wrap; justify-content: center; max-width: 96%;
+            }
+            .vertical-controls button:hover { transform: none; }
+            th:nth-child(2), td:nth-child(2) { display: none; }
+        }
+
+        @media print {
+            body { padding: 0; background: #fff; color: #000; }
+            .vertical-controls, .search-container, .modal-overlay, .admin-col, .history-banner { display: none !important; }
+            .doc-header { background: #fff; color: #000; border: 1px solid #000; border-top: 4px solid #000; box-shadow: none; }
+            .doc-header h1 { color: #000; }
+            .live-date-box { background: #fff; color: #000; border: 1px solid #ccc; }
+            .bar-bg { border: 1px solid #ccc; }
+            .section-card { box-shadow: none; border: 1px solid #000; break-inside: avoid; margin-bottom: 12px; }
+            .section-header { background: #f1f5f9; color: #000; border-bottom: 1px solid #000; }
+            input[type="text"], input[type="number"] { border: none; background: transparent; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="doc-header">
+        <div class="top-row">
+            <div>
+                <h1>Soneri Bank Limited</h1>
+                <div class="sub">IT Operation Task List - Operational Dashboard</div>
+            </div>
+            <div class="header-badges">
+                <div class="version-badge" id="versionBadge">Application V 2.1</div>
+				<div class="version-badge" id="versionBadge">Sheet V 3.11</div>
+                <div class="admin-badge" id="adminBadge">🔐 ADMIN MODE</div>
+            </div>
+        </div>
+        <div class="meta-row">
+            <div class="live-date-box" id="todayDisplay">
+                📅 Today: Loading Date...
+            </div>
+            <div class="view-date-box" id="viewDateBox" style="display:none;">
+                👁️ Viewing:
+                <select id="viewDateSelect" onchange="changeViewingDate(this.value)"></select>
+                <button class="btn-icon" id="backToTodayBtn" title="Back to Today" onclick="changeViewingDate(todayDateStr)" style="display:none;">↩️ Today</button>
+            </div>
+            <div class="save-status-box">
+                <span class="status-badge"><span class="status-dot"></span> Auto-Saved Local</span>
+                <span id="lastSaveTime">Saved just now</span>
+            </div>
+        </div>
+        <div class="overall-progress">
+            <div class="label"><span>Overall Shift Completion</span><span id="overallPct">0% (0/0)</span></div>
+            <div class="bar-bg"><div class="bar-fill" id="overallBar"></div></div>
+        </div>
+    </div>
+
+    <div class="search-container">
+        <input type="text" id="taskSearch" placeholder="🔍 Search tasks by name, profile, nature or time..." onkeyup="filterTasks()">
+    </div>
+
+    <!-- Shown when browsing a date other than today via the "Viewing" dropdown. -->
+    <div class="history-banner" id="historyBanner">
+        ✏️ You are editing the historical record for <strong id="historyBannerDate"></strong>. Changes here overwrite that day's saved data, not today's.
+    </div>
+
+    <!-- All section cards (Morning, Daily, Night, Weekly, Monthly, and any custom
+         sections an Admin adds) are generated dynamically by renderSectionShells().
+         Nothing is hard-coded here anymore so new categories can be added at runtime. -->
+    <div id="sectionsContainer"></div>
+
+</div>
+
+<div class="vertical-controls">
+    <button class="btn-email" onclick="openEmailModal()">📧 Email Summary</button>
+    <button class="btn-backup" onclick="downloadBackupJSON()">💾 Save JSON Backup</button>
+    <button class="btn-import" onclick="openImportModal()">📂 Import Backup</button>
+    <button class="btn-admin" id="btnAdminToggle" onclick="toggleAdminMode()">🔑 Admin Mode</button>
+    <button class="btn-add" id="btnAddTask" onclick="openAddTaskModal()">➕ Add Task</button>
+    <button class="btn-section" id="btnAddSection" onclick="openAddSectionModal()">🗂️ Add Section</button>
+    <button class="btn-reset" onclick="confirmResetDay()">🔄 Reset Day</button>
+    <button class="btn-print" onclick="window.print()">🖨️ Print Checklist</button>
+</div>
+
+<div class="modal-overlay" id="emailModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <span>📧 Email / Excel Formatted Summary</span>
+            <button class="modal-close" onclick="closeModal('emailModal')">✖</button>
+        </div>
+        <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:12px;">
+            Copy the structured table below directly into Outlook, Gmail, or Excel.
+        </p>
+        <div style="margin-bottom: 12px; display:flex; gap:10px; align-items:center;">
+            <label style="font-size:0.82rem; font-weight:600;"><input type="radio" name="emailFilter" value="completed" checked onchange="renderEmailPreview()"> Completed Tasks Only</label>
+            <label style="font-size:0.82rem; font-weight:600;"><input type="radio" name="emailFilter" value="all" onchange="renderEmailPreview()"> All Tasks</label>
+        </div>
+        <div id="emailPreviewContainer" style="background:#fff; padding:10px; border:1px solid #ccc; max-height:350px; overflow-y:auto; border-radius:6px;">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-backup" onclick="copyEmailTable()">📋 Copy Table Content</button>
+            <button class="btn-print" onclick="closeModal('emailModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="adminAuthModal">
+    <div class="modal-card" style="max-width:380px;">
+        <div class="modal-header">
+            <span>🔑 Admin Login</span>
+            <button class="modal-close" onclick="closeModal('adminAuthModal')">✖</button>
+        </div>
+        <div class="form-group">
+            <label>Enter Admin Password</label>
+            <input type="password" id="adminPasswordInput" placeholder="Password (admin123)" onkeyup="if(event.key==='Enter') submitAdminLogin()">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-admin" onclick="submitAdminLogin()">Login</button>
+            <button class="btn-print" onclick="closeModal('adminAuthModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="taskEditModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <span id="taskModalTitle">✏️ Edit Task</span>
+            <button class="modal-close" onclick="closeModal('taskEditModal')">✖</button>
+        </div>
+        <input type="hidden" id="editTaskPrefix">
+        <input type="hidden" id="editTaskIndex">
+
+        <div class="form-group">
+            <label>Section</label>
+            <!-- Options are injected by populateSectionDropdown() from sectionsConfig,
+                 so any custom section an Admin creates shows up here automatically. -->
+            <select id="editTaskSection"></select>
+        </div>
+        <div class="form-group">
+            <label>Sr# (auto-numbered)</label>
+            <input type="number" id="editTaskSr">
+            <span class="hint">Auto-filled with the next free number for a new task. If you type a number that's already used elsewhere, it will be corrected automatically on save so numbers never overlap.</span>
+        </div>
+        <div class="form-group">
+            <label>Nature / Schedule</label>
+            <input type="text" id="editTaskNature" placeholder="e.g. Daily, Mon/Wed/Fri">
+        </div>
+        <div class="form-group">
+            <label>Scheduled Time</label>
+            <input type="text" id="editTaskTime" placeholder="e.g. 9:00am, Pre COB">
+        </div>
+        <div class="form-group">
+            <label>Task Description</label>
+            <input type="text" id="editTaskName" placeholder="Task name">
+        </div>
+        <div class="form-group">
+            <label>Profile Category</label>
+            <select id="editTaskProfile">
+                <option value="Utility">Utility</option>
+                <option value="Browser">Browser</option>
+                <option value="Prod Server">Prod Server</option>
+                <option value="Server">Server</option>
+                <option value="EMAIL">EMAIL</option>
+                <option value="Validation">Validation</option>
+                <option value="Process">Process</option>
+                <option value="DB Server">DB Server</option>
+                <option value="Service">Service</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Note / Command (Optional)</label>
+            <input type="text" id="editTaskNote" placeholder="Additional details or command">
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn-add" style="display:inline-block;" onclick="saveTaskForm()">Save Task</button>
+            <button class="btn-print" onclick="closeModal('taskEditModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="addSectionModal">
+    <div class="modal-card" style="max-width:420px;">
+        <div class="modal-header">
+            <span>🗂️ Add New Section / Category</span>
+            <button class="modal-close" onclick="closeModal('addSectionModal')">✖</button>
+        </div>
+        <div class="form-group">
+            <label>Section Title</label>
+            <input type="text" id="newSectionTitle" placeholder="e.g. Quarterly Compliance Tasks" onkeyup="if(event.key==='Enter') saveNewSection()">
+            <span class="hint">This creates a brand-new empty section with its own table, ready for tasks to be added to it.</span>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-section" style="display:inline-block;" onclick="saveNewSection()">Create Section</button>
+            <button class="btn-print" onclick="closeModal('addSectionModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="importModal">
+    <div class="modal-card" style="max-width:450px;">
+        <div class="modal-header">
+            <span>📂 Import Backup JSON File</span>
+            <button class="modal-close" onclick="closeModal('importModal')">✖</button>
+        </div>
+        <div class="form-group">
+            <label>Select Backup File (.json)</label>
+            <input type="file" id="jsonFileInput" accept=".json">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-import" onclick="processJSONImport()">Upload & Restore</button>
+            <button class="btn-print" onclick="closeModal('importModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="msgModal">
+    <div class="modal-card" style="max-width:380px; text-align:center;">
+        <h3 id="msgModalTitle" style="margin-top:0; color:var(--header-bg);">Notice</h3>
+        <p id="msgModalText" style="font-size:0.9rem; color:var(--text-main); margin:14px 0;"></p>
+        <div class="modal-actions" style="justify-content:center;">
+            <button class="btn-backup" id="msgModalOkBtn" onclick="closeModal('msgModal')">OK</button>
+            <button class="btn-print" id="msgModalCancelBtn" style="display:none;" onclick="closeModal('msgModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    /* =====================================================================
+       SONERI BANK — IT OPERATION TASK LIST  (V.4.0)
+       =====================================================================
+       HOW THE DATA MODEL WORKS (read this before editing anything below):
+
+       1. sectionsConfig   — an ordered list of {key, title} objects. Each
+          entry is one section/category card on the page (Morning, Daily,
+          Night, Weekly, Monthly, plus any custom section an Admin adds).
+          The whole UI (section cards, table headers, the "Section" dropdown
+          in the Add/Edit Task form, progress bars, email report) is BUILT
+          FROM THIS LIST — nothing about sections is hard-coded in the HTML
+          anymore. To rename a default section, just edit DEFAULT_SECTIONS_CONFIG
+          below. To add one at runtime, use the "🗂️ Add Section" button.
+
+       2. tasksMaster      — an object keyed by section "key" (e.g. "morn"),
+          each value an array of task objects: { sr, nature, time, task,
+          profile, note }. "sr" is a bank-wide reference number carried over
+          from the original paper SOP — it is intentionally NOT just the row
+          position, and existing numbers are never silently renumbered so
+          people can keep citing "Sr# 24" etc. New tasks get the next unused
+          number automatically (see getNextGlobalSr()) so numbers can never
+          collide/overlap.
+
+       3. historyDB        — an object keyed by date string ("YYYY-MM-DD").
+          Each date holds the checked/time/init/auth state for that day's
+          tasks. "todayDateStr" is always the real current date; "viewingDateStr"
+          is whichever date is currently selected in the "Viewing" dropdown
+          (defaults to today). Editing is now allowed on ANY viewed date —
+          the history-banner just reminds you which date you're changing.
+
+       4. isAdminLoggedIn  — a simple client-side flag. All structural edits
+          (add/edit/delete task, add/delete section) check this flag both to
+          show/hide their buttons AND inside the functions themselves, so a
+          logged-out user can't trigger them even by other means.
+
+       Everything is saved to localStorage as you go, and "💾 Save JSON
+       Backup" / "📂 Import Backup" round-trip ALL of this (tasks, history,
+       and section list) through a single .json file for safe-keeping or
+       moving between machines.
+       ===================================================================== */
+
+    // ---- Default section list (the 5 original categories) -----------------
+    const DEFAULT_SECTIONS_CONFIG = [
+        { key: 'morn',    title: 'Daily Operation Tasks (Morning)' },
+        { key: 'daily',   title: 'Daily Operation Tasks' },
+        { key: 'night',   title: 'Daily / Post COB / Night Task' },
+        { key: 'weekly',  title: 'Weekly Task' },
+        { key: 'monthly', title: 'Monthly Task' }
+    ];
+
+    // ---- Default tasks for those 5 sections (unchanged from the original
+    //      SOP — Sr# numbers here are the bank's existing reference numbers
+    //      and are intentionally kept exactly as-is, gaps and all). --------
+    const DEFAULT_MASTER_TASKS = {
+        morn: [
+            { sr:1, nature:"Daily", time:"8:30am", task:"Morning System Initialization & Connectivity Check", profile:"Prod Server" },
+            { sr:2, nature:"Mon, Wed, Fri.", time:"-", task:"Bancassurance Recovery Process", profile:"Utility" },
+            { sr:3, nature:"Daily", time:"9am", task:"Corporate Rates", profile:"Browser" },
+            { sr:4, nature:"Daily", time:"10:30am", task:"PSW Process", profile:"Prod Server" },
+            { sr:5, nature:"Daily", time:"-", task:"Bulk Upload", profile:"Browser" },
+            { sr:6, nature:"Daily", time:"3pm", task:"KIBOR Rates", profile:"Browser" },
+            { sr:7, nature:"Daily", time:"1pm", task:"Cheque Book File Generation (9001-9003)", profile:"Browser" },
+            { sr:8, nature:"Daily", time:"4:00pm", task:"PSW Process", profile:"Prod Server" },
+            { sr:9, nature:"Daily", time:"-", task:"Card Fee Recovery Process", profile:"Utility" },
+            { sr:10, nature:"Daily", time:"-", task:"ATL File Receiving", profile:"-" },
+            { sr:11, nature:"Daily", time:"-", task:"ATL Utility", profile:"Utility" },
+            { sr:12, nature:"Daily", time:"-", task:"ATL Deletion", profile:"Server" },
+            { sr:13, nature:"Daily", time:"-", task:"ATL Addition", profile:"Server" },
+            { sr:14, nature:"Daily", time:"-", task:"ATL Service COK", profile:"Browser" },
+            { sr:15, nature:"Daily", time:"-", task:"ATL Service IBD", profile:"Browser" },
+            { sr:16, nature:"on Request", time:"-", task:"Old SOA", profile:"Server" }
+        ],
+        daily: [
+            { sr:18, nature:"Daily", time:"-", task:"Bulk Upload", profile:"Browser" },
+            { sr:19, nature:"Daily", time:"5:00PM", task:"CUTOFF EMAIL", profile:"EMAIL" },
+            { sr:20, nature:"Daily", time:"5:30PM", task:"SWIFT Send Only", profile:"Utility" },
+            { sr:21, nature:"Daily", time:"5PM", task:"Internet Validation", profile:"Validation" },
+            { sr:22, nature:"Daily", time:"Before Cutoff", task:"WEBTECH", profile:"Browser" },
+            { sr:23, nature:"Daily", time:"6pm", task:"Cheque Book File Generation (9001-9003)", profile:"Browser" },
+            { sr:24, nature:"Daily", time:"7:00PM", task:"Pre COB DB BACKUP (Option 7)", profile:"Prod Server" },
+            { sr:25, nature:"Daily", time:"7:30PM", task:"Final Realization", profile:"Browser" },
+            { sr:26, nature:"Daily", time:"-", task:"Card Fee Recovery Process", profile:"Utility" },
+            { sr:27, nature:"Daily", time:"-", task:"NACTA File Upload", profile:"Browser" },
+            { sr:28, nature:"Daily", time:"Before Cutoff", task:"Swift In (instance = 0), Swift Out (instance = 0), SI_to_swift (instance = 0)", profile:"Validation" },
+            { sr:29, nature:"Daily", time:"Before Cutoff", task:"SWIFT PSACKEP instaces queue check = 0", profile:"Validation" },
+            { sr:30, nature:"Daily", time:"Before Cutoff", task:"SWIFT Shutdown & Backup", profile:"Process" },
+            { sr:31, nature:"Daily", time:"After Cutoff", task:"Rates Validation and Authorization Email", profile:"Browser/Email" },
+            { sr:32, nature:"Daily", time:"-", task:"Card Fee Recovery Process", profile:"Utility" },
+            { sr:33, nature:"Daily", time:"Pre COB", task:"Stop COK/SBL.B.CHQ.STK.UPLOAD", profile:"Prod Server" },
+            { sr:34, nature:"Daily", time:"Pre COB", task:"Stop COK/SBL.B.SIGNATURE.UPLOAD", profile:"Prod Server" },
+            { sr:35, nature:"Daily", time:"Pre COB", task:"Disable Load balancer", profile:"Browser" },
+            { sr:36, nature:"Daily", time:"Pre COB", task:"/PROTOCOL.sh [\\\\10.12.1.213\\dw_current\\PROTOCOL(DDMMYYYY)]", profile:"Prod Server" },
+            { sr:37, nature:"Daily", time:"Pre COB", task:"AAA-Unauth Routine", profile:"Prod Server" },
+            { sr:38, nature:"Daily", time:"Pre COB", task:"Pre COB APP Backup", profile:"Prod Server" },
+            { sr:39, nature:"Daily", time:"Pre COB", task:"Count check (FCOB, EIBD & F.OFS)", profile:"Prod Server" },
+            { sr:40, nature:"Daily", time:"Pre COB", task:"Truncate Protocol", profile:"Prod Server" },
+            { sr:41, nature:"Daily", time:"Pre COB", task:"Correction Procedure", profile:"Prod Server" },
+            { sr:42, nature:"Daily", time:"Pre COB", task:"STOP TSM", profile:"Prod Server" },
+            { sr:43, nature:"Daily", time:"Pre COB", task:"COS TSS LIST", profile:"Validation" },
+            { sr:44, nature:"Daily", time:"Pre COB", task:"Exception Report", profile:"Prod Server" },
+            { sr:45, nature:"Daily", time:"Pre COB", task:"Run DELETE.STATUS.AND.SESSION", profile:"Prod Server" },
+            { sr:46, nature:"Daily", time:"Pre COB", task:"CLEAR Error/EOD/AAA EXCEPTION", profile:"Prod Server" },
+            { sr:47, nature:"Daily", time:"Pre COB", task:"Truncate Tables", profile:"Prod Server" },
+            { sr:48, nature:"Daily", time:"Pre COB", task:"&COMO& Backup", profile:"Prod Server" },
+            { sr:49, nature:"Daily", time:"Pre COB", task:"Check LOCKS", profile:"Prod Server" },
+            { sr:50, nature:"Daily", time:"Pre COB", task:"Set TSM to AUTO", profile:"Prod Server" },
+            { sr:51, nature:"Daily", time:"Pre COB", task:"Run START.TSM FROM CLASSIC (T24APP1-E8)", profile:"Prod Server" },
+            { sr:52, nature:"Daily", time:"Pre COB", task:"START TSM TAFJEE FROM SERVLET (TSM32P9085)", profile:"Browser" }
+        ],
+        night: [
+            { sr:53, nature:"Daily", time:"Pre COB", task:"Check Services before Starting COB - COS TSS.LIST", profile:"Prod Server" },
+            { sr:54, nature:"Daily", time:"Pre COB", task:"COS TSS.LIST MARK START SERVICE COK/SBL.B.SARMAYA.BEFORE", profile:"Browser" },
+            { sr:55, nature:"Daily", time:"-", task:"Start COB", profile:"Prod Server" },
+            { sr:56, nature:"Daily", time:"During COB", task:"AAA-UNAUTH (Email)", profile:"EMAIL" },
+            { sr:57, nature:"Daily", time:"During COB", task:"Pre Cob Task (Email)", profile:"EMAIL" },
+            { sr:58, nature:"Daily", time:"During COB", task:"World Cheque", profile:"Service" },
+            { sr:59, nature:"Daily", time:"During COB", task:"WEBTECH Soneri Restoration 10.35.1.89", profile:"Service" },
+            { sr:60, nature:"During COB", time:"-", task:"TRS (Treasury Report Service) DATA - COK/BNK/IBD: After COB reporting stage complete, download TRS Files on 10.12.1.213 in Extract TRS folder and execute service", profile:"Server" },
+            { sr:61, nature:"Daily", time:"Post COB", task:"COS TSS.LIST MARK START SERVICE COK/SBL.B.SARMAYA.AFTER", profile:"Browser" },
+            { sr:62, nature:"Daily", time:"Post COB", task:"Post COB Application Backup", profile:"Prod Server" },
+            { sr:63, nature:"Daily", time:"Post COB", task:"COMO Backup After COB", profile:"Prod Server" },
+            { sr:64, nature:"Daily", time:"Post COB", task:"Extract JT & RT Reports", profile:"Prod Server" },
+            { sr:65, nature:"Daily", time:"Post COB", task:"COUNT F.OFS.MESSAGE.QUEUE", profile:"Prod Server" },
+            { sr:66, nature:"Daily", time:"Post COB", task:"cd /scripts/EBEODERROR.sh", profile:"Prod Server" },
+            { sr:67, nature:"Daily", time:"Post COB", task:"BNK/SBL.EOD.RETURN.CHARGES", profile:"Prod Server" },
+            { sr:68, nature:"Daily", time:"-", task:"Copy PD Reports", profile:"Location" },
+            { sr:69, nature:"Daily", time:"Post COB", task:"COK/DW.EXPORT.SERVICE.FT1", profile:"Prod Server" },
+            { sr:70, nature:"Daily", time:"Post COB", task:"COK/DW.EXPORT.SERVICE.CRF1", profile:"Prod Server" },
+            { sr:71, nature:"Daily", time:"Post COB", task:"BNK/DW.EXPORT.SERVICE.TAX", profile:"Prod Server" },
+            { sr:72, nature:"Daily", time:"Post COB", task:"COK/DW.EXPORT.SERVICE.OTH1", profile:"Prod Server" },
+            { sr:73, nature:"Daily", time:"Post COB", task:"BNK/DW.EXPORT.SERVICE.REM", profile:"Prod Server" },
+            { sr:74, nature:"Daily", time:"Post COB", task:"IBD/DW.EXPORT.SERVICE.ALL", profile:"Prod Server" },
+            { sr:75, nature:"Daily", time:"-", task:"Consolidated Reports", profile:"Prod Server" },
+            { sr:76, nature:"Daily", time:"8:00AM", task:"SWIFT Start", profile:"Server" },
+            { sr:77, nature:"Daily", time:"-", task:"COK/SBL.B.CHQ.STK.UPLOAD", profile:"Prod Server" },
+            { sr:78, nature:"Daily", time:"-", task:"COK/SBL.B.SIGNATURE.UPLOAD", profile:"Prod Server" },
+            { sr:79, nature:"Daily", time:"-", task:"START.TSM TAFJEE FROM SERVLET", profile:"Browser" },
+            { sr:80, nature:"Daily", time:"-", task:"RTN.CLEAR.EXPIRED.TOKENS", profile:"Prod Server" },
+            { sr:81, nature:"Daily", time:"8:00AM", task:"Enable Load Balancer", profile:"Browser" },
+            { sr:82, nature:"Daily", time:"Post COB", task:"Post COB Tape Backup", profile:"DB Server" },
+            { sr:83, nature:"Daily", time:"Post COB", task:"DW copied to 10.12.1.213 & 10.10.2.169", profile:"Server" },
+            { sr:84, nature:"Daily", time:"Post COB", task:"After DW Copied Reset SDM", profile:"Server" },
+            { sr:85, nature:"Daily", time:"8:45 AM", task:"Check LOCKS (F.OFS.TOKENS)", profile:"Prod Server" }
+        ],
+        weekly: [
+            { sr:88, nature:"Weekly", time:"Saturday NIGHT", task:"FULL TAPE DB BKUP POST COB", profile:"DB Server" },
+            { sr:89, nature:"Weekly", time:"Sunday", task:"SMS File", profile:"Prod Server" },
+            { sr:90, nature:"Weekly", time:"Sunday", task:"FULL T24 TAPE backup (AGOB & BCOB)", profile:"Prod Server" },
+            { sr:91, nature:"Daily", time:"-", task:"Pre Bkp till ...00PM", profile:"DB Server" },
+            { sr:92, nature:"Weekly", time:"Saturday Evening", task:"Pre Bkp till ...00PM", profile:"DB Server" }
+        ],
+        monthly: [
+            { sr:93, nature:"Monthly", time:"*SOM on 10th", task:"IBD Tax Routine on every month after 10th cob", profile:"Prod Server", note:"SBL.M.PROF.ACCT.TAX.COB" },
+            { sr:94, nature:"Monthly", time:"*SOM", task:"COK Tax Routine on every month after 01st COB", profile:"Prod Server", note:"SBL.M.PROF.ACCT.TAX.COB" },
+            { sr:95, nature:"Monthly", time:"*EOM", task:"BASIC INTEREST Rates", profile:"Browser" },
+            { sr:96, nature:"Monthly", time:"*EOM", task:"KIBOR RATE 18 LEAD TABLE", profile:"Browser" },
+            { sr:97, nature:"Monthly", time:"7th OM", task:"IBD Depreciation Process/Advance Rental Issues", profile:"Prod Server" },
+            { sr:98, nature:"Monthly", time:"*EOM", task:"SMS File MONTHLY", profile:"Prod Server" },
+            { sr:99, nature:"Monthly", time:"*SOM", task:"AKU Bulk Upload", profile:"Browser" }
+        ]
+    };
+
+    // ---- Live application state -------------------------------------------
+    let tasksMaster = {};        // { sectionKey: [task, task, ...] }
+    let sectionsConfig = [];     // [{key, title}, ...] — drives every section card
+    let todayDateStr = "";       // real current date, e.g. "2026-09-17"
+    let viewingDateStr = "";     // date currently shown/edited (defaults to today)
+    let historyDB = {};          // { "YYYY-MM-DD": { "sectionKey-sr": {checked,time,init,auth} } }
+    let isAdminLoggedIn = false;
+
+    window.onload = function() {
+        initTodayDate();
+        viewingDateStr = todayDateStr;
+        loadSectionsConfig();
+        loadMasterTasks();
+        loadHistoryDB();
+        populateDateSelector();
+        renderAllTables();
+        startAutoSaveTimer();
+    };
+
+    // =========================================================================
+    // DATE HANDLING
+    // =========================================================================
+
+    function initTodayDate() {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        todayDateStr = `${year}-${month}-${day}`;
+
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const formattedDisplay = today.toLocaleDateString('en-US', options);
+
+        const displayEl = document.getElementById('todayDisplay');
+        if (displayEl) {
+            displayEl.innerHTML = `📅 <strong>Today:</strong> ${formattedDisplay}`;
+        }
+    }
+
+    // Builds the "Viewing" date dropdown from whatever dates exist in historyDB
+    // (imported backups included), so past days aren't stuck invisible.
+    function populateDateSelector() {
+        const select = document.getElementById('viewDateSelect');
+        const box = document.getElementById('viewDateBox');
+        if (!select || !box) return;
+
+        const dates = Object.keys(historyDB).sort().reverse();
+        if (!dates.includes(todayDateStr)) dates.unshift(todayDateStr);
+
+        select.innerHTML = dates.map(d => {
+            const label = d === todayDateStr ? `${d} (Today)` : d;
+            return `<option value="${d}">${label}</option>`;
+        }).join('');
+
+        select.value = viewingDateStr;
+
+        // Only bother showing the control once there's more than just today to look at.
+        box.style.display = dates.length > 1 ? 'flex' : 'none';
+        updateHistoryBanner();
+    }
+
+    function changeViewingDate(dateStr) {
+        viewingDateStr = dateStr;
+        const select = document.getElementById('viewDateSelect');
+        if (select) select.value = dateStr;
+        updateHistoryBanner();
+        renderAllTables();
+    }
+
+    // Shows/hides the amber "you're editing history" banner and the
+    // "↩️ Today" shortcut button based on whether we're off today's date.
+    function updateHistoryBanner() {
+        const isPast = (viewingDateStr !== todayDateStr);
+        const banner = document.getElementById('historyBanner');
+        const dateSpan = document.getElementById('historyBannerDate');
+        const backBtn = document.getElementById('backToTodayBtn');
+        if (banner) banner.style.display = isPast ? 'flex' : 'none';
+        if (dateSpan) dateSpan.innerText = viewingDateStr;
+        if (backBtn) backBtn.style.display = isPast ? 'inline-flex' : 'none';
+    }
+
+    // =========================================================================
+    // PERSISTENCE — sections, tasks, and daily history all live in
+    // localStorage under their own keys, and are also bundled together by
+    // downloadBackupJSON() / processJSONImport() for portability.
+    // =========================================================================
+
+    function loadSectionsConfig() {
+        const saved = localStorage.getItem('sbl_sections_config_v1');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    sectionsConfig = parsed;
+                    return;
+                }
+            } catch(e) { /* fall through to default */ }
+        }
+        sectionsConfig = JSON.parse(JSON.stringify(DEFAULT_SECTIONS_CONFIG));
+    }
+
+    function saveSectionsConfig() {
+        try {
+            localStorage.setItem('sbl_sections_config_v1', JSON.stringify(sectionsConfig));
+        } catch(err) {
+            showNotice("Storage Warning", "Section list updated on screen, but could not be saved to local storage. Use 'Save JSON Backup' so you don't lose this.");
+        }
+    }
+
+    function loadMasterTasks() {
+        const saved = localStorage.getItem('sbl_master_tasks_v4');
+        if (saved) {
+            try {
+                tasksMaster = JSON.parse(saved);
+            } catch(e) {
+                tasksMaster = JSON.parse(JSON.stringify(DEFAULT_MASTER_TASKS));
+            }
+        } else {
+            tasksMaster = JSON.parse(JSON.stringify(DEFAULT_MASTER_TASKS));
+        }
+        // Make sure every configured section has at least an empty array,
+        // so a freshly created section never breaks the render loop.
+        sectionsConfig.forEach(sec => {
+            if (!Array.isArray(tasksMaster[sec.key])) tasksMaster[sec.key] = [];
+        });
+    }
+
+    function saveMasterTasks() {
+        try {
+            localStorage.setItem('sbl_master_tasks_v4', JSON.stringify(tasksMaster));
+        } catch(err) {
+            showNotice("Storage Warning", "Task list updated on screen, but could not be saved to this browser's local storage (it may be disabled by your organization's policy). Use 'Save JSON Backup' regularly so you don't lose changes.");
+        }
+    }
+
+    function loadHistoryDB() {
+        const saved = localStorage.getItem('sbl_history_db_v4');
+        if (saved) {
+            try { historyDB = JSON.parse(saved); } catch(e) { historyDB = {}; }
+        }
+        if (!historyDB[todayDateStr]) {
+            historyDB[todayDateStr] = {};
+        }
+    }
+
+    function saveHistoryDB() {
+        try {
+            localStorage.setItem('sbl_history_db_v4', JSON.stringify(historyDB));
+        } catch(err) {
+            const timeEl = document.getElementById('lastSaveTime');
+            if (timeEl) timeEl.innerText = `Not saved (storage blocked)`;
+            return;
+        }
+        const timeEl = document.getElementById('lastSaveTime');
+        if (timeEl) {
+            const now = new Date();
+            timeEl.innerText = `Saved at ${now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}`;
+        }
+    }
+
+    // =========================================================================
+    // RENDERING — one function builds the section-card shells (header + empty
+    // table) from sectionsConfig, another fills in the task rows. Splitting
+    // them like this means admin buttons in a section header, or a brand-new
+    // section, always reflect the latest sectionsConfig/isAdminLoggedIn state.
+    // =========================================================================
+
+    function renderSectionShells() {
+        const container = document.getElementById('sectionsContainer');
+        if (!container) return;
+
+        container.innerHTML = sectionsConfig.map(sec => `
+            <div class="section-card" data-section-key="${sec.key}">
+                <div class="section-header">
+                    <span>${sec.title}</span>
+                    <div class="section-header-right">
+                        <span class="progress-mini" id="prog-${sec.key}">0% Complete</span>
+                        <button class="btn-icon section-admin-btn" title="Add Task to This Section" style="display:${isAdminLoggedIn ? 'inline-block' : 'none'};" onclick="openAddTaskModal('${sec.key}')">➕</button>
+                        <button class="btn-icon section-admin-btn" title="Delete Section" style="display:${isAdminLoggedIn ? 'inline-block' : 'none'};" onclick="deleteSection('${sec.key}')">🗑️</button>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="sr">Sr#</th>
+                            <th>Nature</th>
+                            <th>Time</th>
+                            <th>Task Description</th>
+                            <th>Profile</th>
+                            <th style="text-align:center;">Status</th>
+                            <th style="width:110px;">Executed Time</th>
+                            <th style="width:110px;">Inputer</th>
+                            <th style="width:110px;">Author/Verifier</th>
+                            <th class="admin-col" style="${isAdminLoggedIn ? 'display:table-cell;' : 'display:none;'}">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-${sec.key}"></tbody>
+                </table>
+                ${sec.key === 'monthly' ? '<div class="footnote">* EOM = End of Month &nbsp;&nbsp;|&nbsp;&nbsp; * SOM = Start of Month</div>' : ''}
+            </div>
+        `).join('');
+    }
+
+    function renderAllTables() {
+        // Shells are rebuilt every time so admin buttons and any newly
+        // added/removed section are always in sync — cheap for a list this size.
+        renderSectionShells();
+
+        const dayRecord = historyDB[viewingDateStr] || {};
+
+        sectionsConfig.forEach(sec => {
+            const prefix = sec.key;
+            const tbody = document.getElementById(`tbody-${prefix}`);
+            if (!tbody) return;
+
+            const tasks = tasksMaster[prefix] || [];
+            let html = '';
+
+            tasks.forEach((item, idx) => {
+                const taskId = `${prefix}-${item.sr}`;
+                const saved = dayRecord[taskId] || { checked: false, time: '', init: '', auth: '' };
+                const isCompleted = saved.checked ? 'completed' : '';
+                const profileClass = getProfileBadgeClass(item.profile);
+
+                html += `
+                    <tr class="${isCompleted}" id="row-${taskId}">
+                        <td class="sr">${item.sr}</td>
+                        <td class="nature">${item.nature || '-'}</td>
+                        <td class="time-col">${item.time || '-'}</td>
+                        <td>
+                            <div class="task-desc">${item.task}</div>
+                            ${item.note ? `<div class="note">${item.note}</div>` : ''}
+                        </td>
+                        <td><span class="badge ${profileClass}">${item.profile || 'Other'}</span></td>
+                        <td style="text-align:center;">
+                            <input type="checkbox" ${saved.checked ? 'checked' : ''} onchange="toggleTaskCheck('${prefix}', ${item.sr}, this.checked)">
+                        </td>
+                        <td>
+                            <input type="text" id="time-${taskId}" value="${saved.time || ''}" placeholder="--:--" oninput="updateTaskMeta('${prefix}', ${item.sr}, 'time', this.value)">
+                        </td>
+                        <td>
+                            <input type="text" id="init-${taskId}" value="${saved.init || ''}" maxlength="10" placeholder="Init" oninput="updateTaskMeta('${prefix}', ${item.sr}, 'init', this.value)">
+                        </td>
+                        <td>
+                            <input type="text" id="auth-${taskId}" value="${saved.auth || ''}" maxlength="10" placeholder="Verifier" oninput="updateTaskMeta('${prefix}', ${item.sr}, 'auth', this.value)">
+                        </td>
+                        <td class="admin-col" style="${isAdminLoggedIn ? 'display:table-cell;' : 'display:none;'}">
+                            <button class="btn-icon" title="Edit Task" onclick="openEditTaskModal('${prefix}', ${idx})">✏️</button>
+                            <button class="btn-icon" title="Delete Task" onclick="deleteTask('${prefix}', ${idx})">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        });
+
+        updateProgress();
+    }
+
+    function getProfileBadgeClass(profile) {
+        if (!profile) return 'badge-other';
+        const p = profile.toLowerCase();
+        if (p.includes('utility')) return 'badge-utility';
+        if (p.includes('browser')) return 'badge-browser';
+        if (p.includes('server') || p.includes('db')) return 'badge-server';
+        if (p.includes('email')) return 'badge-email';
+        if (p.includes('validation')) return 'badge-validation';
+        if (p.includes('service') || p.includes('process')) return 'badge-service';
+        return 'badge-other';
+    }
+
+    // =========================================================================
+    // CHECKLIST EDITING — writes into historyDB[viewingDateStr], so this
+    // works identically whether you're on today's live shift or browsing
+    // (and now editing) a past date via the "Viewing" dropdown.
+    // =========================================================================
+
+    function toggleTaskCheck(prefix, sr, isChecked) {
+        if (!historyDB[viewingDateStr]) historyDB[viewingDateStr] = {};
+        const taskId = `${prefix}-${sr}`;
+        if (!historyDB[viewingDateStr][taskId]) {
+            historyDB[viewingDateStr][taskId] = { checked: false, time: '', init: '', auth: '' };
+        }
+        historyDB[viewingDateStr][taskId].checked = isChecked;
+
+        const row = document.getElementById(`row-${taskId}`);
+        if (row) {
+            if (isChecked) row.classList.add('completed');
+            else row.classList.remove('completed');
+        }
+
+        if (isChecked && !historyDB[viewingDateStr][taskId].time) {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            historyDB[viewingDateStr][taskId].time = timeStr;
+            const timeInput = document.getElementById(`time-${taskId}`);
+            if (timeInput) timeInput.value = timeStr;
+        }
+
+        saveHistoryDB();
+        updateProgress();
+    }
+
+    function updateTaskMeta(prefix, sr, field, value) {
+        if (!historyDB[viewingDateStr]) historyDB[viewingDateStr] = {};
+        const taskId = `${prefix}-${sr}`;
+        if (!historyDB[viewingDateStr][taskId]) {
+            historyDB[viewingDateStr][taskId] = { checked: false, time: '', init: '', auth: '' };
+        }
+        historyDB[viewingDateStr][taskId][field] = value.trim();
+        saveHistoryDB();
+    }
+
+    function updateProgress() {
+        const dayRecord = historyDB[viewingDateStr] || {};
+        let totalAll = 0;
+        let completedAll = 0;
+
+        sectionsConfig.forEach(sec => {
+            const prefix = sec.key;
+            const tasks = tasksMaster[prefix] || [];
+            let sectionCompleted = 0;
+
+            tasks.forEach(task => {
+                totalAll++;
+                const taskId = `${prefix}-${task.sr}`;
+                if (dayRecord[taskId] && dayRecord[taskId].checked) {
+                    completedAll++;
+                    sectionCompleted++;
+                }
+            });
+
+            const pct = tasks.length > 0 ? Math.round((sectionCompleted / tasks.length) * 100) : 0;
+            const progEl = document.getElementById(`prog-${prefix}`);
+            if (progEl) {
+                progEl.innerText = `${pct}% Complete (${sectionCompleted}/${tasks.length})`;
+            }
+        });
+
+        const overallPct = totalAll > 0 ? Math.round((completedAll / totalAll) * 100) : 0;
+        const overallPctEl = document.getElementById('overallPct');
+        if (overallPctEl) {
+            overallPctEl.innerText = `${overallPct}% (${completedAll}/${totalAll})`;
+        }
+
+        const overallBar = document.getElementById('overallBar');
+        if (overallBar) {
+            overallBar.style.width = `${overallPct}%`;
+        }
+    }
+
+    function filterTasks() {
+        const query = document.getElementById('taskSearch').value.toLowerCase();
+        const rows = document.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const text = row.innerText.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+        });
+    }
+
+    function startAutoSaveTimer() {
+        setInterval(() => {
+            saveHistoryDB();
+        }, 10000);
+    }
+
+    // =========================================================================
+    // BACKUP / IMPORT — bundles sections + tasks + history into one file.
+    // =========================================================================
+
+    function downloadBackupJSON() {
+        saveHistoryDB();
+        const exportData = {
+            masterTasks: tasksMaster,
+            historyDB: historyDB,
+            sectionsConfig: sectionsConfig,
+            exportedAt: new Date().toISOString()
+        };
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `Soneri_IT_Tasks_${todayDateStr}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        showNotice("Backup Saved", "Complete JSON backup file downloaded successfully.");
+    }
+
+    function openImportModal() {
+        document.getElementById('importModal').style.display = 'flex';
+    }
+
+    // Turns any arbitrary section title into a safe, unique lowercase key
+    // like "morn" or "quarterly-compliance-tasks" for use as a tasksMaster key.
+    function slugify(text) {
+        let base = text.toLowerCase().trim()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-+|-+$)/g, '');
+        if (!base) base = 'section';
+        let candidate = base;
+        let i = 2;
+        const existingKeys = sectionsConfig.map(s => s.key);
+        while (existingKeys.includes(candidate)) {
+            candidate = `${base}-${i}`;
+            i++;
+        }
+        return candidate;
+    }
+
+    function titleCaseFromKey(key) {
+        return key.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    // Accepts common alternate spellings/casings for the 5 default sections,
+    // AND preserves any additional custom sections found in the backup
+    // (registering them into sectionsConfig if they're not already known),
+    // so backups saved from older versions or with custom sections both
+    // import correctly instead of quietly dropping data.
+    function normalizeMasterTasks(raw, importedSectionsConfig) {
+        const keyAliases = {
+            morn:    ['morn', 'morning', 'am', 'morningshift'],
+            daily:   ['daily', 'day', 'afternoon', 'dayshift'],
+            night:   ['night', 'evening', 'nightshift', 'pm'],
+            weekly:  ['weekly', 'week'],
+            monthly: ['monthly', 'month']
+        };
+
+        const rawKeysLower = {};
+        Object.keys(raw).forEach(k => { rawKeysLower[k.toLowerCase()] = k; });
+
+        const result = {};
+        const consumedRawKeys = new Set();
+
+        Object.keys(keyAliases).forEach(canonical => {
+            let matched = null;
+            for (const alias of keyAliases[canonical]) {
+                const actualKey = rawKeysLower[alias];
+                if (actualKey && Array.isArray(raw[actualKey])) {
+                    matched = raw[actualKey];
+                    consumedRawKeys.add(actualKey);
+                    break;
+                }
+            }
+            // Keep existing/default tasks for a section if the backup doesn't have it,
+            // rather than wiping it out to an empty list.
+            result[canonical] = matched || tasksMaster[canonical] || [];
+        });
+
+        // Anything left over that's an array is treated as a custom section —
+        // register it in sectionsConfig (if it isn't already) so it gets its
+        // own visible section card instead of being silently discarded.
+        Object.keys(raw).forEach(rawKey => {
+            if (consumedRawKeys.has(rawKey)) return;
+            if (!Array.isArray(raw[rawKey])) return;
+
+            let existing = sectionsConfig.find(s => s.key === rawKey);
+            if (!existing) {
+                let title = titleCaseFromKey(rawKey);
+                if (Array.isArray(importedSectionsConfig)) {
+                    const match = importedSectionsConfig.find(s => s && s.key === rawKey);
+                    if (match && match.title) title = match.title;
+                }
+                sectionsConfig.push({ key: rawKey, title: title });
+            }
+            result[rawKey] = raw[rawKey];
+        });
+
+        return result;
+    }
+
+    function processJSONImport() {
+        const fileInput = document.getElementById('jsonFileInput');
+        if (!fileInput.files || fileInput.files.length === 0) {
+            showNotice("File Required", "Please select a valid .json backup file.");
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const imported = JSON.parse(e.target.result);
+
+                // Support a few possible shapes: the normal {masterTasks, historyDB} wrapper,
+                // common alternate property names, or a bare task-sections object with no wrapper at all.
+                let importedMaster = imported.masterTasks || imported.tasksMaster || imported.tasks || null;
+                let importedHistory = imported.historyDB || imported.history || null;
+                let importedSections = Array.isArray(imported.sectionsConfig) ? imported.sectionsConfig : null;
+
+                if (!importedMaster && !importedHistory && imported && typeof imported === 'object') {
+                    const knownKeys = ['morn', 'daily', 'night', 'weekly', 'monthly', 'morning', 'day', 'evening', 'week', 'month'];
+                    const looksLikeTasks = knownKeys.some(k => Array.isArray(imported[k]));
+                    if (looksLikeTasks) importedMaster = imported;
+                }
+
+                if (!importedMaster && !importedHistory) {
+                    showNotice("Error", "This file doesn't look like a Soneri Task backup — no recognizable task or history data was found inside it.");
+                    return;
+                }
+
+                let taskCount = 0;
+
+                if (importedMaster) {
+                    // normalizeMasterTasks may push newly-discovered custom sections
+                    // into sectionsConfig as a side effect, so it must run before we save it.
+                    tasksMaster = normalizeMasterTasks(importedMaster, importedSections);
+                    taskCount = Object.values(tasksMaster).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+                    saveMasterTasks();
+                    saveSectionsConfig();
+                }
+
+                if (importedHistory && typeof importedHistory === 'object') {
+                    historyDB = importedHistory;
+                    if (!historyDB[todayDateStr]) historyDB[todayDateStr] = {};
+                    saveHistoryDB();
+                }
+
+                populateDateSelector();
+                renderAllTables();
+                closeModal('importModal');
+                fileInput.value = '';
+
+                if (importedMaster && taskCount === 0) {
+                    showNotice("Imported, but empty", "The file was read successfully, but 0 tasks were found in it — the task list has been left unchanged. This backup may be from an incompatible version; please check its contents.");
+                } else {
+                    showNotice("Success", "Backup restored successfully!" + (taskCount ? " (" + taskCount + " tasks loaded)" : ""));
+                }
+            } catch(err) {
+                showNotice("Error", "Invalid JSON backup file format. (" + err.message + ")");
+            }
+        };
+        reader.onerror = function() {
+            showNotice("Error", "Could not read the selected file. Please try again.");
+        };
+        reader.readAsText(file);
+    }
+
+    // =========================================================================
+    // EMAIL / EXCEL SUMMARY
+    // =========================================================================
+
+    function openEmailModal() {
+        renderEmailPreview();
+        document.getElementById('emailModal').style.display = 'flex';
+    }
+
+    function renderEmailPreview() {
+        const filterType = document.querySelector('input[name="emailFilter"]:checked').value;
+        const dayRecord = historyDB[viewingDateStr] || {};
+        let html = `
+            <div id="emailExportTable">
+            <h3 style="margin:0 0 5px 0; color:#1a56db;">Soneri Bank Limited - IT Operation Status Report</h3>
+            <p style="margin:0 0 12px 0; font-size:12px; color:#555;"><strong>Date:</strong> ${viewingDateStr} | <strong>Generated At:</strong> ${new Date().toLocaleTimeString()}</p>
+        `;
+
+        sectionsConfig.forEach(sec => {
+            const prefix = sec.key;
+            const tasks = tasksMaster[prefix] || [];
+            let sectionRows = '';
+
+            tasks.forEach(item => {
+                const taskId = `${prefix}-${item.sr}`;
+                const saved = dayRecord[taskId] || { checked: false, time: '', init: '', auth: '' };
+
+                if (filterType === 'completed' && !saved.checked) return;
+
+                sectionRows += `
+                    <tr>
+                        <td style="border:1px solid #ccc; padding:6px; font-weight:bold; text-align:center;">${item.sr}</td>
+                        <td style="border:1px solid #ccc; padding:6px;">${item.nature || '-'}</td>
+                        <td style="border:1px solid #ccc; padding:6px;">${item.task}</td>
+                        <td style="border:1px solid #ccc; padding:6px; text-align:center; color:${saved.checked ? '#059669' : '#dc2626'}; font-weight:bold;">${saved.checked ? 'COMPLETED' : 'PENDING'}</td>
+                        <td style="border:1px solid #ccc; padding:6px;">${saved.time || '-'}</td>
+                        <td style="border:1px solid #ccc; padding:6px;">${saved.init || '-'}</td>
+                        <td style="border:1px solid #ccc; padding:6px;">${saved.auth || '-'}</td>
+                    </tr>
+                `;
+            });
+
+            if (sectionRows) {
+                html += `
+                    <h4 style="margin:12px 0 6px 0; color:#111827; background:#eef2ff; padding:6px; border:1px solid #cbd5e1;">${sec.title}</h4>
+                    <table style="width:100%; border-collapse:collapse; font-family:Arial, sans-serif; font-size:12px;">
+                        <thead>
+                            <tr style="background:#f8fafc; color:#333;">
+                                <th style="border:1px solid #ccc; padding:6px;">Sr#</th>
+                                <th style="border:1px solid #ccc; padding:6px;">Nature</th>
+                                <th style="border:1px solid #ccc; padding:6px;">Task Description</th>
+                                <th style="border:1px solid #ccc; padding:6px;">Status</th>
+                                <th style="border:1px solid #ccc; padding:6px;">Time</th>
+                                <th style="border:1px solid #ccc; padding:6px;">Inputer</th>
+                                <th style="border:1px solid #ccc; padding:6px;">Verifier</th>
+                            </tr>
+                        </thead>
+                        <tbody>${sectionRows}</tbody>
+                    </table>
+                `;
+            }
+        });
+
+        html += `</div>`;
+        document.getElementById('emailPreviewContainer').innerHTML = html;
+    }
+
+    function copyEmailTable() {
+        const container = document.getElementById('emailPreviewContainer');
+        const range = document.createRange();
+        range.selectNode(container);
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(range);
+
+        try {
+            document.execCommand('copy');
+            window.getSelection().removeAllRanges();
+            showNotice("Copied!", "Excel-formatted table copied to clipboard. Paste directly into Outlook or Excel.");
+        } catch (err) {
+            showNotice("Copy Failed", "Please manually highlight and copy the preview table.");
+        }
+    }
+
+    // =========================================================================
+    // ADMIN MODE — every structural edit function below re-checks
+    // isAdminLoggedIn itself (not just the buttons that call it), so add/edit/
+    // delete/add-section can't be triggered while logged out by any route.
+    // Change the password by editing the string compared in submitAdminLogin().
+    // =========================================================================
+
+    function toggleAdminMode() {
+        if (isAdminLoggedIn) {
+            isAdminLoggedIn = false;
+            document.getElementById('adminBadge').style.display = 'none';
+            document.getElementById('btnAddTask').style.display = 'none';
+            document.getElementById('btnAddSection').style.display = 'none';
+            document.getElementById('btnAdminToggle').innerText = '🔑 Admin Mode';
+            renderAllTables();
+            showNotice("Logged Out", "Exited Admin Mode.");
+        } else {
+            document.getElementById('adminPasswordInput').value = '';
+            document.getElementById('adminAuthModal').style.display = 'flex';
+        }
+    }
+
+    function submitAdminLogin() {
+        const pass = document.getElementById('adminPasswordInput').value;
+        if (pass === 'admin123') {
+            isAdminLoggedIn = true;
+            document.getElementById('adminBadge').style.display = 'inline-block';
+            document.getElementById('btnAddTask').style.display = 'flex';
+            document.getElementById('btnAddSection').style.display = 'flex';
+            document.getElementById('btnAdminToggle').innerText = '🔓 Logout Admin';
+            closeModal('adminAuthModal');
+            renderAllTables();
+            showNotice("Admin Mode Active", "You can now edit or create tasks and sections.");
+        } else {
+            showNotice("Access Denied", "Incorrect Admin Password.");
+        }
+    }
+
+    // Small shared guard used at the top of every admin-only action.
+    function requireAdmin() {
+        if (!isAdminLoggedIn) {
+            showNotice("Admin Required", "Please log in as Admin (🔑 Admin Mode) before adding, editing, or deleting tasks or sections.");
+            return false;
+        }
+        return true;
+    }
+
+    // =========================================================================
+    // TASK ADD / EDIT / DELETE
+    // =========================================================================
+
+    // Finds the smallest Sr# not already used anywhere, so newly added tasks
+    // never collide/overlap with an existing one — this is the fix for the
+    // "numbers overlap when adding a task" bug. Existing numbers are never
+    // touched by this; it only decides the *next* one.
+    function getNextGlobalSr() {
+        let maxSr = 0;
+        Object.values(tasksMaster).forEach(list => {
+            (list || []).forEach(t => {
+                if (typeof t.sr === 'number' && t.sr > maxSr) maxSr = t.sr;
+            });
+        });
+        return maxSr + 1;
+    }
+
+    // Is this Sr# already used by some other task? (excludes the task
+    // currently being edited, identified by excludePrefix/excludeIdx)
+    function isSrTaken(sr, excludePrefix, excludeIdx) {
+        let taken = false;
+        Object.keys(tasksMaster).forEach(prefix => {
+            (tasksMaster[prefix] || []).forEach((t, idx) => {
+                if (prefix === excludePrefix && idx === excludeIdx) return;
+                if (t.sr === sr) taken = true;
+            });
+        });
+        return taken;
+    }
+
+    // Fills the "Section" dropdown in the Add/Edit Task modal from
+    // sectionsConfig, so custom sections show up automatically.
+    function populateSectionDropdown(selectedKey) {
+        const select = document.getElementById('editTaskSection');
+        select.innerHTML = sectionsConfig.map(sec =>
+            `<option value="${sec.key}">${sec.title}</option>`
+        ).join('');
+        if (selectedKey) select.value = selectedKey;
+    }
+
+    function openAddTaskModal(prefix) {
+        if (!requireAdmin()) return;
+
+        document.getElementById('taskModalTitle').innerText = '➕ Add New Task';
+        document.getElementById('editTaskPrefix').value = '';
+        document.getElementById('editTaskIndex').value = '-1';
+        populateSectionDropdown(prefix || (sectionsConfig[0] && sectionsConfig[0].key));
+        document.getElementById('editTaskSr').value = getNextGlobalSr();
+        document.getElementById('editTaskNature').value = 'Daily';
+        document.getElementById('editTaskTime').value = '-';
+        document.getElementById('editTaskName').value = '';
+        document.getElementById('editTaskProfile').value = 'Utility';
+        document.getElementById('editTaskNote').value = '';
+        document.getElementById('taskEditModal').style.display = 'flex';
+    }
+
+    function openEditTaskModal(prefix, idx) {
+        if (!requireAdmin()) return;
+
+        const task = tasksMaster[prefix][idx];
+        if (!task) return;
+
+        document.getElementById('taskModalTitle').innerText = '✏️ Edit Task';
+        document.getElementById('editTaskPrefix').value = prefix;
+        document.getElementById('editTaskIndex').value = idx;
+        populateSectionDropdown(prefix);
+        document.getElementById('editTaskSr').value = task.sr;
+        document.getElementById('editTaskNature').value = task.nature || '';
+        document.getElementById('editTaskTime').value = task.time || '';
+        document.getElementById('editTaskName').value = task.task || '';
+        document.getElementById('editTaskProfile').value = task.profile || 'Other';
+        document.getElementById('editTaskNote').value = task.note || '';
+
+        document.getElementById('taskEditModal').style.display = 'flex';
+    }
+
+    function saveTaskForm() {
+        if (!requireAdmin()) return;
+
+        const prefix = document.getElementById('editTaskSection').value;
+        const oldPrefix = document.getElementById('editTaskPrefix').value;
+        const idx = parseInt(document.getElementById('editTaskIndex').value);
+        const isNewTask = !(idx >= 0 && oldPrefix);
+
+        let sr = parseInt(document.getElementById('editTaskSr').value) || getNextGlobalSr();
+        let srWasCorrected = false;
+
+        // Never allow two tasks to share the same Sr# — auto-bump to the next
+        // free number instead of silently creating an overlap.
+        if (isSrTaken(sr, isNewTask ? null : oldPrefix, isNewTask ? null : idx)) {
+            sr = getNextGlobalSr();
+            srWasCorrected = true;
+        }
+
+        const newTask = {
+            sr: sr,
+            nature: document.getElementById('editTaskNature').value.trim(),
+            time: document.getElementById('editTaskTime').value.trim(),
+            task: document.getElementById('editTaskName').value.trim(),
+            profile: document.getElementById('editTaskProfile').value,
+            note: document.getElementById('editTaskNote').value.trim()
+        };
+
+        if (!newTask.task) {
+            showNotice("Validation Error", "Task description cannot be empty.");
+            return;
+        }
+
+        if (!isNewTask) {
+            tasksMaster[oldPrefix].splice(idx, 1);
+        }
+
+        if (!tasksMaster[prefix]) tasksMaster[prefix] = [];
+        tasksMaster[prefix].push(newTask);
+        tasksMaster[prefix].sort((a,b) => a.sr - b.sr);
+
+        saveMasterTasks();
+        renderAllTables();
+        closeModal('taskEditModal');
+        showNotice("Saved", srWasCorrected
+            ? `Task list updated. Note: that Sr# was already in use, so this task was automatically assigned Sr# ${sr} instead.`
+            : "Task list updated successfully.");
+    }
+
+    function deleteTask(prefix, idx) {
+        if (!requireAdmin()) return;
+
+        showConfirm("Delete Task", "Are you sure you want to delete this task?", function() {
+            tasksMaster[prefix].splice(idx, 1);
+            saveMasterTasks();
+            renderAllTables();
+            showNotice("Deleted", "Task removed from list.");
+        });
+    }
+
+    // =========================================================================
+    // SECTION ADD / DELETE (custom categories, admin-only)
+    // =========================================================================
+
+    function openAddSectionModal() {
+        if (!requireAdmin()) return;
+        document.getElementById('newSectionTitle').value = '';
+        document.getElementById('addSectionModal').style.display = 'flex';
+    }
+
+    function saveNewSection() {
+        if (!requireAdmin()) return;
+
+        const title = document.getElementById('newSectionTitle').value.trim();
+        if (!title) {
+            showNotice("Validation Error", "Please enter a title for the new section.");
+            return;
+        }
+
+        const key = slugify(title);
+        sectionsConfig.push({ key: key, title: title });
+        tasksMaster[key] = [];
+
+        saveSectionsConfig();
+        saveMasterTasks();
+        renderAllTables();
+        closeModal('addSectionModal');
+        showNotice("Section Created", `"${title}" has been added. Use its ➕ button to start adding tasks.`);
+    }
+
+    function deleteSection(key) {
+        if (!requireAdmin()) return;
+
+        if (sectionsConfig.length <= 1) {
+            showNotice("Not Allowed", "At least one section must remain — create another section before deleting this one.");
+            return;
+        }
+
+        const section = sectionsConfig.find(s => s.key === key);
+        const title = section ? section.title : key;
+
+        showConfirm("Delete Section", `Delete the entire "${title}" section and all ${(tasksMaster[key] || []).length} of its tasks? This cannot be undone.`, function() {
+            sectionsConfig = sectionsConfig.filter(s => s.key !== key);
+            delete tasksMaster[key];
+            saveSectionsConfig();
+            saveMasterTasks();
+            renderAllTables();
+            showNotice("Section Deleted", `"${title}" has been removed.`);
+        });
+    }
+
+    // =========================================================================
+    // MISC / MODALS
+    // =========================================================================
+
+    function confirmResetDay() {
+        showConfirm("Reset Daily Progress", "Are you sure you want to clear all checks and initials for today?", function() {
+            historyDB[todayDateStr] = {};
+            saveHistoryDB();
+            renderAllTables();
+            showNotice("Reset Complete", "Today's checklist cleared for a new shift.");
+        });
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).style.display = 'none';
+    }
+
+    function showNotice(title, text) {
+        document.getElementById('msgModalTitle').innerText = title;
+        document.getElementById('msgModalText').innerText = text;
+        document.getElementById('msgModalOkBtn').onclick = function() { closeModal('msgModal'); };
+        document.getElementById('msgModalCancelBtn').style.display = 'none';
+        document.getElementById('msgModal').style.display = 'flex';
+    }
+
+    function showConfirm(title, text, onConfirm) {
+        document.getElementById('msgModalTitle').innerText = title;
+        document.getElementById('msgModalText').innerText = text;
+        document.getElementById('msgModalOkBtn').onclick = function() {
+            closeModal('msgModal');
+            if (onConfirm) onConfirm();
+        };
+        document.getElementById('msgModalCancelBtn').style.display = 'inline-block';
+        document.getElementById('msgModal').style.display = 'flex';
+    }
+</script>
+
+<div class="credit-footer">Made by <strong>kreazzyProgramer</strong> with ❤️</div>
+
+</body>
+</html>

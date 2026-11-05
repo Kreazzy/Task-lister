@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply antialiased text-slate-800 bg-slate-100;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    padding: 0 !important;
+  }
+
+  header nav,
+  header button,
+  .fixed,
+  button,
+  input[type="checkbox"],
+  select {
+    box-shadow: none !important;
+  }
+
+  .fixed,
+  input[placeholder*="Search"] {
+    display: none !important;
+  }
+
+  /* Keep clean black/white layout for print */
+  header {
+    background: #fff !important;
+    color: #000 !important;
+    border: 1px solid #000 !important;
+    box-shadow: none !important;
+  }
+
+  header * {
+    color: #000 !important;
+  }
+
+  .bg-white {
+    box-shadow: none !important;
+    border: 1px solid #000 !important;
+    break-inside: avoid;
+  }
+
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  th, td {
+    border: 1px solid #000 !important;
+    padding: 4px 6px !important;
+    color: #000 !important;
+  }
+
+  input[type="text"] {
+    border: none !important;
+    background: transparent !important;
+    color: #000 !important;
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Soneri Bank IT Operations Dashboard",
+  "description": "Enterprise IT operational task checklist, shift analytics, custom category manager, and user management system for bank IT operations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

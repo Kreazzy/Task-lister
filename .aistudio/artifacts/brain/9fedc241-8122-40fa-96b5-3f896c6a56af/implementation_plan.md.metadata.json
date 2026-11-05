@@ -1,0 +1,6 @@
+{
+  "summary": "Architectural blueprint and migration roadmap for the Soneri Bank Limited IT Operations Task Management & Analytics Portal. Outlines the modular React architecture, Context API state management with localStorage persistence, role-based user management (Operator, Verifier, Admin), custom category manager, shift pass-fail summary cards, and email/backup tools.",
+  "updatedAt": "2026-11-05T07:14:01.987954994Z",
+  "requestFeedback": true,
+  "userFacing": true
+}

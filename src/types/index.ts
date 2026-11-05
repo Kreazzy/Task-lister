@@ -1,0 +1,62 @@
+export type ProfileCategory =
+  | 'Utility'
+  | 'Browser'
+  | 'Prod Server'
+  | 'Server'
+  | 'EMAIL'
+  | 'Validation'
+  | 'Process'
+  | 'DB Server'
+  | 'Service'
+  | 'Other';
+
+export interface TaskItem {
+  sr: number;
+  nature: string;
+  time: string;
+  task: string;
+  profile: ProfileCategory | string;
+  note?: string;
+}
+
+export interface SectionConfig {
+  key: string;
+  title: string;
+  description?: string;
+}
+
+export interface TaskExecution {
+  checked: boolean;
+  time: string;
+  init: string;
+  auth: string;
+  completedAt?: string;
+  completedByUserId?: string;
+  verifiedByUserId?: string;
+}
+
+// History DB format: { [dateStr: "YYYY-MM-DD"]: { [taskKey: `${sectionKey}-${sr}`]: TaskExecution } }
+export type HistoryDB = Record<string, Record<string, TaskExecution>>;
+
+export type UserRole = 'admin' | 'operator';
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  initials: string;
+  role: UserRole;
+  pin: string;
+  email?: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface SlaMilestone {
+  id: string;
+  taskKey: string; // e.g. "morn-1" or "daily-19"
+  label: string;
+  targetTime: string;
+  isMandatory: boolean;
+}
+
+export type ViewTab = 'checklist' | 'analytics' | 'categories' | 'users';

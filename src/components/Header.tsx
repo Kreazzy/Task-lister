@@ -1,0 +1,296 @@
+import React from 'react';
+import {
+  Calendar,
+  Clock,
+  RotateCcw,
+  Printer,
+  Mail,
+  FileJson,
+  Layers,
+  BarChart3,
+  CheckSquare,
+  Users,
+} from 'lucide-react';
+import { ViewTab } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { useHistory } from '../context/HistoryContext';
+
+interface HeaderProps {
+  currentTab: ViewTab;
+  onSelectTab: (tab: ViewTab) => void;
+  onOpenEmailModal: () => void;
+  onOpenBackupModal: () => void;
+  onOpenAuthModal: () => void;
+  onRequestResetDay: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({
+  currentTab,
+  onSelectTab,
+  onOpenEmailModal,
+  onOpenBackupModal,
+  onOpenAuthModal,
+  onRequestResetDay,
+}) => {
+  const { currentUser, isAdmin } = useAuth();
+  const {
+    todayDateStr,
+    viewingDateStr,
+    availableDates,
+    setViewingDate,
+    lastSaveTime,
+    getOverallStats,
+  } = useHistory();
+
+  const isBrowsingHistory = viewingDateStr !== todayDateStr;
+  const overall = getOverallStats();
+
+  const formattedToday = new Date().toLocaleDateString('en-US', {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+
+  return (
+    <header className="bg-slate-900 text-white rounded-xl shadow-lg border-t-4 border-blue-600 mb-6 overflow-hidden">
+      {/* Top Bar Zone: Brand | Navigation Tabs (Admin only) | Active User & Actions */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between px-6 py-4 border-b border-slate-800 gap-4">
+        {/* Brand Zone */}
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center font-black text-white text-lg tracking-wider shadow-sm">
+            SB
+          </div>
+          <div>
+            <h1 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+              Soneri Bank Limited
+              <span className="text-xs font-mono font-medium px-2 py-0.5 rounded-sm bg-slate-800 text-slate-300 border border-slate-700">
+                IT Ops V5.0
+              </span>
+            </h1>
+            <p className="text-xs text-slate-400">Core Banking Operations & Handover Portal</p>
+          </div>
+        </div>
+
+        {/* Navigation Tabs (Admins can see everything; Operators are restricted to Checklist only) */}
+        {isAdmin ? (
+          <nav className="flex items-center gap-1 bg-slate-800/80 p-1 rounded-lg border border-slate-700/60 overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => onSelectTab('checklist')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
+                currentTab === 'checklist'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+              }`}
+            >
+              <CheckSquare className="w-3.5 h-3.5" />
+              Checklist
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onSelectTab('analytics')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
+                currentTab === 'analytics'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+              }`}
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              Shift Analytics
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onSelectTab('categories')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
+                currentTab === 'categories'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              Categories & SOP
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onSelectTab('users')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
+                currentTab === 'users'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              Staff & Roles
+            </button>
+          </nav>
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/80 rounded-lg border border-slate-700/60 text-xs text-slate-300">
+            <CheckSquare className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="font-semibold text-white">Daily Operational Task List</span>
+            <span className="text-slate-400 text-[11px]">· Operation Officer Mode</span>
+          </div>
+        )}
+
+        {/* User Account & Shift Utility Actions */}
+        <div className="flex items-center flex-wrap gap-2.5 shrink-0">
+          {/* Active User Switcher */}
+          <button
+            type="button"
+            onClick={onOpenAuthModal}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 transition-colors"
+            title="Click to switch active user or verify admin rights"
+          >
+            <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-[10px]">
+              {currentUser.initials}
+            </div>
+            <span className="font-medium truncate max-w-[120px]">{currentUser.name}</span>
+            <span
+              className={`text-[10px] uppercase font-bold px-1.5 py-0.2 rounded-xs ${
+                isAdmin
+                  ? 'bg-purple-900/60 text-purple-300 border border-purple-700/50'
+                  : 'bg-emerald-900/60 text-emerald-300 border border-emerald-700/50'
+              }`}
+            >
+              {isAdmin ? 'Admin' : 'Operation Officer'}
+            </span>
+          </button>
+
+          {/* Quick Action Tools */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={onOpenEmailModal}
+              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors"
+              title="Generate Email / Excel Summary"
+            >
+              <Mail className="w-4 h-4 text-sky-400" />
+            </button>
+
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={onOpenBackupModal}
+                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors"
+                title="JSON Backup & Restore (Admin)"
+              >
+                <FileJson className="w-4 h-4 text-blue-400" />
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors"
+              title="Print Operational Checklist"
+            >
+              <Printer className="w-4 h-4 text-slate-300" />
+            </button>
+
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={onRequestResetDay}
+                className="p-2 rounded-lg bg-slate-800 hover:bg-rose-950/40 text-slate-300 hover:text-rose-400 border border-slate-700 transition-colors"
+                title="Reset Day Progress (Admin)"
+              >
+                <RotateCcw className="w-4 h-4 text-rose-400" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Meta Bar: Date Switcher, Auto-Save Status & Progress */}
+      <div className="px-6 py-3.5 bg-slate-950/40 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Live Today Badge */}
+          <div className="flex items-center gap-2 text-sky-400 font-medium">
+            <Calendar className="w-4 h-4" />
+            <span>Today: {formattedToday}</span>
+          </div>
+
+          {/* Viewing Date Switcher */}
+          <div className="flex items-center gap-2 bg-slate-800/90 px-2.5 py-1 rounded-md border border-slate-700">
+            <span className="text-amber-400 font-semibold flex items-center gap-1">
+              Viewing Shift:
+            </span>
+            <select
+              value={viewingDateStr}
+              onChange={e => setViewingDate(e.target.value)}
+              className="bg-slate-900 text-amber-300 font-mono text-xs px-2 py-0.5 rounded-sm border border-amber-900/80 focus:outline-hidden"
+            >
+              {availableDates.map(date => (
+                <option key={date} value={date}>
+                  {date === todayDateStr ? `${date} (Live Today)` : date}
+                </option>
+              ))}
+            </select>
+
+            {isBrowsingHistory && (
+              <button
+                type="button"
+                onClick={() => setViewingDate(todayDateStr)}
+                className="text-[11px] font-semibold text-sky-400 hover:text-sky-300 underline ml-1 cursor-pointer"
+              >
+                Back to Today
+              </button>
+            )}
+          </div>
+
+          {/* Storage Auto-Saved */}
+          <div className="flex items-center gap-1.5 text-slate-400">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="text-slate-300">{lastSaveTime}</span>
+          </div>
+        </div>
+
+        {/* Overall Completion Metric */}
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="text-right">
+            <span className="text-slate-400">Shift Completion: </span>
+            <span className="font-mono font-bold text-white tabular-nums">
+              {overall.percentage}% ({overall.completed}/{overall.total})
+            </span>
+          </div>
+          <div className="w-32 bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-700">
+            <div
+              className={`h-full transition-all duration-300 ${
+                overall.percentage === 100
+                  ? 'bg-emerald-500'
+                  : overall.percentage > 50
+                  ? 'bg-blue-500'
+                  : 'bg-amber-500'
+              }`}
+              style={{ width: `${overall.percentage}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Amber Historical Alert Banner */}
+      {isBrowsingHistory && (
+        <div className="px-6 py-2 bg-amber-950/80 border-t border-amber-800 text-amber-200 text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="font-bold">Notice:</span>
+            <span>
+              You are currently viewing and editing the shift history for{' '}
+              <strong className="font-mono text-amber-100">{viewingDateStr}</strong>. Changes made
+              here update that past record, not today&apos;s live shift.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setViewingDate(todayDateStr)}
+            className="px-2.5 py-1 text-xs font-semibold bg-amber-900 hover:bg-amber-800 text-amber-100 rounded-md transition-colors"
+          >
+            Switch to Live Shift
+          </button>
+        </div>
+      )}
+    </header>
+  );
+};
