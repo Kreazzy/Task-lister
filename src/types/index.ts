@@ -39,7 +39,7 @@ export interface TaskExecution {
 // History DB format: { [dateStr: "YYYY-MM-DD"]: { [taskKey: `${sectionKey}-${sr}`]: TaskExecution } }
 export type HistoryDB = Record<string, Record<string, TaskExecution>>;
 
-export type UserRole = 'admin' | 'operator';
+export type UserRole = 'admin' | 'operator' | 'supervisor' | 'auditor' | 'manager';
 
 export interface UserProfile {
   id: string;
@@ -50,6 +50,7 @@ export interface UserProfile {
   email?: string;
   active: boolean;
   createdAt: string;
+  department?: string;
 }
 
 export interface SlaMilestone {
@@ -62,14 +63,29 @@ export interface SlaMilestone {
 
 export type ViewTab = 'checklist' | 'analytics' | 'categories' | 'users';
 
-export type ThemePalette = 'bank-blue' | 'islamic-emerald' | 'royal-indigo' | 'corporate-amber' | 'midnight-dark';
-export type LayoutDensity = 'comfortable' | 'compact';
+export type ThemePalette =
+  | 'bank-blue'
+  | 'islamic-emerald'
+  | 'royal-indigo'
+  | 'corporate-amber'
+  | 'midnight-dark'
+  | 'crimson-ruby'
+  | 'custom';
+
+export type LayoutDensity = 'comfortable' | 'compact' | 'ultra-compact';
 export type LayoutFormat = 'sections' | 'timeline';
 
 export interface AppSettings {
   theme: ThemePalette;
+  customColor?: string; // hex code for custom theme
+  darkMode: boolean;
+  logoType: 'default' | 'custom' | 'icon';
+  logoUrl?: string; // custom image url or data URL
   density: LayoutDensity;
   layoutFormat: LayoutFormat;
   portalTitle: string;
   portalSubtitle: string;
+  branchName: string;
+  customFooterText: string;
+  showVersionOnRight: boolean;
 }

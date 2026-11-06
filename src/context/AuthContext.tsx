@@ -8,10 +8,16 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   isOperator: boolean;
+  isSupervisor: boolean;
+  isAuditor: boolean;
+  isManager: boolean;
+  canVerify: boolean;
+  canViewAnalytics: boolean;
+  canManageSettings: boolean;
   login: (pin: string, userId?: string) => { success: boolean; message?: string };
   logout: () => void;
   switchUser: (userId: string) => void;
-  addUser: (userData: { name: string; initials: string; role: UserRole; pin: string; email?: string }) => UserProfile;
+  addUser: (userData: { name: string; initials: string; role: UserRole; pin: string; email?: string; department?: string }) => UserProfile;
   updateUser: (userId: string, updates: Partial<Omit<UserProfile, 'id' | 'createdAt'>>) => void;
   deleteUser: (userId: string) => boolean;
   toggleUserStatus: (userId: string) => void;
@@ -21,16 +27,18 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const VALID_ROLES: UserRole[] = ['admin', 'operator', 'supervisor', 'auditor', 'manager'];
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<UserProfile[]>(() => {
     try {
-      const saved = localStorage.getItem('sbl_users_db_v1');
+      const saved = localStorage.getItem('sbl_users_db_v2');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed.map((u: any) => ({
             ...u,
-            role: (u.role === 'admin' ? 'admin' : 'operator') as UserRole,
+            role: VALID_ROLES.includes(u.role) ? u.role : 'operator',
           }));
         }
       }
@@ -59,7 +67,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Sync users to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('sbl_users_db_v1', JSON.stringify(users));
+      localStorage.setItem('sbl_users_db_v2', JSON.stringify(users));
     } catch (e) {
       console.warn('Could not save users to localStorage', e);
     }
@@ -78,8 +86,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [currentUser]);
 
-  const isAdmin = currentUser?.role === 'admin';
-  const isOperator = currentUser?.role === 'operator';
+  const role = currentUser?.role;
+  const isAdmin = role === 'admin';
+  const isOperator = role === 'operator';
+  const isSupervisor = role === 'supervisor';
+  const isAuditor = role === 'auditor';
+  const isManager = role === 'manager';
+
+  // Role Permissions matrix
+  const canVerify = isAdmin || isSupervisor || isManager;
+  const canViewAnalytics = isAdmin || isSupervisor || isManager || isAuditor;
+  const canManageSettings = isAdmin;
 
   const login = (pin: string, userId?: string): { success: boolean; message?: string } => {
     const cleanPin = pin.trim();
@@ -111,7 +128,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return { success: true };
     }
 
-    return { success: false, message: 'Invalid credentials. Only admin-registered staff accounts can log in.' };
+    return { success: false, message: 'Invalid credentials. Only registered banking staff accounts can log in.' };
   };
 
   const logout = () => {
@@ -136,6 +153,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     role: UserRole;
     pin: string;
     email?: string;
+    department?: string;
   }): UserProfile => {
     const id = `user-${Date.now().toString(36)}`;
     const newUser: UserProfile = {
@@ -145,12 +163,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       role: userData.role,
       pin: userData.pin || '1234',
       email: userData.email?.trim() || undefined,
+      department: userData.department?.trim() || undefined,
       active: true,
       createdAt: new Date().toISOString().slice(0, 10),
     };
     setUsers(prev => {
       const next = [...prev, newUser];
-      // Sync to server API in background
       fetch('/api/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -232,14 +250,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (Array.isArray(importedUsers) && importedUsers.length > 0) {
       const normalized = importedUsers.map(u => ({
         ...u,
-        role: (u.role === 'admin' ? 'admin' : 'operator') as UserRole,
+        role: VALID_ROLES.includes(u.role) ? u.role : 'operator',
       }));
       setUsers(normalized);
-      fetch('/api/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usersDB: normalized }),
-      }).catch(() => {});
     }
   };
 
@@ -251,6 +264,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isAuthenticated,
         isAdmin,
         isOperator,
+        isSupervisor,
+        isAuditor,
+        isManager,
+        canVerify,
+        canViewAnalytics,
+        canManageSettings,
         login,
         logout,
         switchUser,

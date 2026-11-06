@@ -2,64 +2,155 @@
 
 @layer base {
   body {
-    @apply antialiased text-slate-800 bg-slate-100;
+    @apply antialiased text-slate-800 bg-slate-100 transition-colors duration-150;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  .dark body {
+    @apply text-slate-100 bg-slate-950;
   }
 }
 
+/* ==========================================================================
+   PRINT OPTIMIZATION: Ultra-compact, 1-2 Pages Maximum for Shift Checklist & Reports
+   ========================================================================== */
 @media print {
-  body {
-    background: #fff !important;
-    color: #000 !important;
-    padding: 0 !important;
+  @page {
+    size: A4 portrait;
+    margin: 6mm 5mm 6mm 5mm !important;
   }
 
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 8.5pt !important;
+    line-height: 1.15 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Completely hide all UI controls, navigation, floating sidebars, and admin buttons */
   header nav,
   header button,
+  .print\:hidden,
   .fixed,
   button,
+  select,
+  input[type="file"],
   input[type="checkbox"],
-  select {
-    box-shadow: none !important;
-  }
-
-  .fixed,
-  input[placeholder*="Search"] {
+  input[placeholder*="Search"],
+  .no-print {
     display: none !important;
   }
 
-  /* Keep clean black/white layout for print */
+  /* Compact Print Header: Prints only executive bank header */
   header {
-    background: #fff !important;
-    color: #000 !important;
-    border: 1px solid #000 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 1.5px solid #000000 !important;
+    border-radius: 4px !important;
     box-shadow: none !important;
+    margin-bottom: 6px !important;
+    padding: 6px 10px !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 
   header * {
-    color: #000 !important;
+    color: #000000 !important;
+    text-shadow: none !important;
   }
 
-  .bg-white {
+  header .border-b,
+  header .border-t {
+    border-color: #cccccc !important;
+  }
+
+  /* Compact card containers */
+  .bg-white,
+  .dark\:bg-slate-800,
+  .bg-slate-50 {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #999999 !important;
+    border-radius: 2px !important;
     box-shadow: none !important;
-    border: 1px solid #000 !important;
-    break-inside: avoid;
+    margin-bottom: 6px !important;
   }
 
+  /* Ultra-dense table styling: fits 45-55 rows per page cleanly */
   table {
     border-collapse: collapse !important;
     width: 100% !important;
+    font-size: 8pt !important;
+    line-height: 1.1 !important;
   }
 
-  th, td {
-    border: 1px solid #000 !important;
-    padding: 4px 6px !important;
-    color: #000 !important;
+  thead {
+    display: table-header-group !important;
   }
 
+  tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  th {
+    background-color: #f1f5f9 !important;
+    color: #000000 !important;
+    border: 1px solid #666666 !important;
+    padding: 2.5px 4px !important;
+    font-weight: 700 !important;
+    font-size: 7.5pt !important;
+    text-transform: uppercase !important;
+  }
+
+  td {
+    border: 1px solid #888888 !important;
+    padding: 2px 4px !important;
+    color: #000000 !important;
+  }
+
+  /* Transparent inputs for executed time and initials */
   input[type="text"] {
     border: none !important;
     background: transparent !important;
-    color: #000 !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    font-size: 8pt !important;
+    font-weight: 700 !important;
+  }
+
+  /* Printable checkbox representation */
+  .print-check-done::after {
+    content: "✓ DONE" !important;
+    font-weight: bold !important;
+    color: #000000 !important;
+    font-size: 7.5pt !important;
+  }
+
+  .print-check-pending::after {
+    content: "—" !important;
+    color: #888888 !important;
+    font-size: 7.5pt !important;
+  }
+
+  /* Badges in print */
+  span[class*="rounded"] {
+    border: 1px solid #aaaaaa !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0px 3px !important;
+    font-size: 7pt !important;
+  }
+
+  /* Footer print compliance line */
+  footer {
+    border-top: 1px solid #666666 !important;
+    margin-top: 6px !important;
+    padding-top: 4px !important;
+    font-size: 7.5pt !important;
+    color: #444444 !important;
+    page-break-before: avoid !important;
   }
 }

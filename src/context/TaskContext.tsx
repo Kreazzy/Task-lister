@@ -9,6 +9,7 @@ interface TaskContextType {
   getNextGlobalSr: () => number;
   isSrTaken: (sr: number, excludeSectionKey?: string, excludeIndex?: number) => boolean;
   addSection: (title: string, description?: string) => string;
+  editSection: (key: string, updates: { title: string; description?: string }) => void;
   deleteSection: (key: string) => boolean;
   reorderSections: (newSections: SectionConfig[]) => void;
   addTask: (
@@ -166,6 +167,27 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }).catch(() => {});
 
     return key;
+  };
+
+  const editSection = (key: string, updates: { title: string; description?: string }) => {
+    const nextSections = sectionsConfig.map(s => {
+      if (s.key === key) {
+        return {
+          ...s,
+          title: updates.title.trim() || s.title,
+          description: updates.description !== undefined ? updates.description.trim() || undefined : s.description,
+        };
+      }
+      return s;
+    });
+
+    setSectionsConfig(nextSections);
+
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sectionsConfig: nextSections }),
+    }).catch(() => {});
   };
 
   const deleteSection = (key: string): boolean => {
@@ -514,6 +536,7 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         getNextGlobalSr,
         isSrTaken,
         addSection,
+        editSection,
         deleteSection,
         reorderSections,
         addTask,

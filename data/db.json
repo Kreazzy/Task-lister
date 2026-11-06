@@ -139,6 +139,13 @@
         "time": "-",
         "task": "Old SOA",
         "profile": "Server"
+      },
+      {
+        "sr": 17,
+        "nature": "Daily",
+        "time": "8:45am",
+        "task": "Morning Core Banking Health & Connectivity Verification",
+        "profile": "Validation"
       }
     ],
     "daily": [
@@ -619,6 +626,20 @@
         "time": "8:45 AM",
         "task": "Check LOCKS (F.OFS.TOKENS)",
         "profile": "Prod Server"
+      },
+      {
+        "sr": 86,
+        "nature": "Daily",
+        "time": "Post COB",
+        "task": "Post COB Tape Verification & Logging",
+        "profile": "DB Server"
+      },
+      {
+        "sr": 87,
+        "nature": "Daily",
+        "time": "Post COB",
+        "task": "Night Shift Batch Completion Confirmation",
+        "profile": "Validation"
       }
     ],
     "weekly": [
@@ -709,6 +730,14 @@
         "time": "*SOM",
         "task": "AKU Bulk Upload",
         "profile": "Browser"
+      },
+      {
+        "sr": 100,
+        "nature": "Monthly",
+        "time": "*EOM",
+        "task": "Month-End Regulatory & Compliance Reporting Archive",
+        "profile": "Server",
+        "note": "SBL.M.EOD.ARCHIVE"
       }
     ]
   },
@@ -765,6 +794,7 @@
       "role": "admin",
       "pin": "admin123",
       "email": "waqar.admin@soneri.com",
+      "department": "IT Operations Directorate",
       "active": true,
       "createdAt": "2026-01-01"
     },
@@ -775,26 +805,40 @@
       "role": "operator",
       "pin": "1234",
       "email": "ali.raza@soneri.com",
+      "department": "Core Banking Shift A",
       "active": true,
       "createdAt": "2026-01-05"
     },
     {
-      "id": "user-op2",
-      "name": "Hamza Khan (Operation Officer)",
-      "initials": "HK",
-      "role": "operator",
+      "id": "user-sup1",
+      "name": "Kashif Siddiqui (Shift Supervisor)",
+      "initials": "KS",
+      "role": "supervisor",
       "pin": "1234",
-      "email": "hamza.khan@soneri.com",
+      "email": "kashif.s@soneri.com",
+      "department": "Operations Supervision",
       "active": true,
-      "createdAt": "2026-01-10"
+      "createdAt": "2026-01-08"
     },
     {
-      "id": "user-op3",
-      "name": "Tariq Mehmood (Operation Officer)",
-      "initials": "TM",
-      "role": "operator",
+      "id": "user-audit1",
+      "name": "Farhan Sheikh (Audit & Compliance)",
+      "initials": "FS",
+      "role": "auditor",
       "pin": "1234",
-      "email": "tariq.m@soneri.com",
+      "email": "farhan.audit@soneri.com",
+      "department": "Internal IT Audit",
+      "active": true,
+      "createdAt": "2026-01-12"
+    },
+    {
+      "id": "user-mgr1",
+      "name": "Nasir Iqbal (Operations Manager)",
+      "initials": "NI",
+      "role": "manager",
+      "pin": "1234",
+      "email": "nasir.iqbal@soneri.com",
+      "department": "IT Operations Management",
       "active": true,
       "createdAt": "2026-01-02"
     }
@@ -806,5 +850,5 @@
     "portalTitle": "Soneri Bank Limited",
     "portalSubtitle": "IT Operation Task List - Operational Dashboard"
   },
-  "updatedAt": "2026-11-05T10:50:31.310Z"
+  "updatedAt": "2026-11-06T06:21:40.890Z"
 }

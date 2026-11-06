@@ -28,7 +28,7 @@ interface HistoryContextType {
   importHistory: (history: HistoryDB) => void;
   remapTaskKeys: (sectionKey: string, srMapping: Record<number, number>) => void;
   getDayExecution: (sectionKey: string, sr: number) => TaskExecution;
-  getOverallStats: () => { total: number; completed: number; percentage: number };
+  getOverallStats: () => { total: number; completed: number; percentage: number; maxSr: number };
   getSectionStats: (sectionKey: string) => { total: number; completed: number; percentage: number };
 }
 
@@ -255,19 +255,23 @@ export const HistoryProvider: React.FC<{ children: ReactNode }> = ({ children })
   const getOverallStats = () => {
     let total = 0;
     let completed = 0;
+    let maxSr = 0;
     const dayRecord = historyDB[viewingDateStr] || {};
 
     sectionsConfig.forEach(sec => {
       const tasks = tasksMaster[sec.key] || [];
       tasks.forEach(t => {
         total++;
+        if (typeof t.sr === 'number' && t.sr > maxSr) {
+          maxSr = t.sr;
+        }
         const id = `${sec.key}-${t.sr}`;
         if (dayRecord[id]?.checked) completed++;
       });
     });
 
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
-    return { total, completed, percentage };
+    return { total, completed, percentage, maxSr };
   };
 
   return (
