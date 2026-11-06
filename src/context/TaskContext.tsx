@@ -40,6 +40,7 @@ interface TaskContextType {
     slas?: SlaMilestone[]
   ) => void;
   resetMasterData: () => void;
+  syncMasterCatalog: () => { count: number; added: number };
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
@@ -58,29 +59,84 @@ function slugify(text: string, existingKeys: string[]): string {
   return candidate;
 }
 
+// Reconcile loaded tasks with DEFAULT_MASTER_TASKS to guarantee all 100 contiguous banking SOP tasks exist
+function reconcileMasterTasks(loadedTasks: Record<string, TaskItem[]> | null): Record<string, TaskItem[]> {
+  if (!loadedTasks || typeof loadedTasks !== 'object' || Object.keys(loadedTasks).length === 0) {
+    return DEFAULT_MASTER_TASKS;
+  }
+
+  // Count loaded tasks and collect present Sr numbers
+  let currentTotal = 0;
+  const existingSrSet = new Set<number>();
+  Object.values(loadedTasks).forEach(list => {
+    (list || []).forEach(t => {
+      currentTotal++;
+      if (typeof t.sr === 'number') existingSrSet.add(t.sr);
+    });
+  });
+
+  // If already at least 100 tasks and contains the previously missing sequence items (17, 86, 87, 100)
+  if (currentTotal >= 100 && existingSrSet.has(17) && existingSrSet.has(86) && existingSrSet.has(87) && existingSrSet.has(100)) {
+    return loadedTasks;
+  }
+
+  // Reconcile and merge missing SOP tasks
+  const result: Record<string, TaskItem[]> = {};
+  const allSectionKeys = Array.from(new Set([...DEFAULT_SECTIONS_CONFIG.map(s => s.key), ...Object.keys(loadedTasks)]));
+
+  allSectionKeys.forEach(secKey => {
+    const defaultList = DEFAULT_MASTER_TASKS[secKey] || [];
+    const userList = loadedTasks[secKey] ? [...loadedTasks[secKey]] : [];
+
+    defaultList.forEach(defTask => {
+      const exists = userList.some(
+        u => u.sr === defTask.sr || u.task.toLowerCase().trim() === defTask.task.toLowerCase().trim()
+      );
+      if (!exists) {
+        userList.push(defTask);
+      }
+    });
+
+    userList.sort((a, b) => a.sr - b.sr);
+    result[secKey] = userList;
+  });
+
+  return result;
+}
+
 export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [sectionsConfig, setSectionsConfig] = useState<SectionConfig[]>(() => {
     try {
-      const saved = localStorage.getItem('sbl_sections_config_v1');
+      const saved = localStorage.getItem('sbl_sections_config_v2') || localStorage.getItem('sbl_sections_config_v1');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length >= DEFAULT_SECTIONS_CONFIG.length) return parsed;
       }
     } catch {
-      // fallback to default
+      // fallback
     }
     return DEFAULT_SECTIONS_CONFIG;
   });
 
   const [tasksMaster, setTasksMaster] = useState<Record<string, TaskItem[]>>(() => {
     try {
-      const saved = localStorage.getItem('sbl_master_tasks_v4');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object') return parsed;
+      const savedV5 = localStorage.getItem('sbl_master_tasks_v5');
+      if (savedV5) {
+        const parsed = JSON.parse(savedV5);
+        if (parsed && typeof parsed === 'object') {
+          return reconcileMasterTasks(parsed);
+        }
+      }
+
+      const savedV4 = localStorage.getItem('sbl_master_tasks_v4');
+      if (savedV4) {
+        const parsed = JSON.parse(savedV4);
+        if (parsed && typeof parsed === 'object') {
+          return reconcileMasterTasks(parsed);
+        }
       }
     } catch {
-      // fallback to default
+      // fallback
     }
     return DEFAULT_MASTER_TASKS;
   });
@@ -101,7 +157,7 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Save to localStorage on change and sync to server if available
   useEffect(() => {
     try {
-      localStorage.setItem('sbl_sections_config_v1', JSON.stringify(sectionsConfig));
+      localStorage.setItem('sbl_sections_config_v2', JSON.stringify(sectionsConfig));
     } catch (e) {
       console.warn('Could not save sectionsConfig to localStorage', e);
     }
@@ -109,7 +165,7 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     try {
-      localStorage.setItem('sbl_master_tasks_v4', JSON.stringify(tasksMaster));
+      localStorage.setItem('sbl_master_tasks_v5', JSON.stringify(tasksMaster));
     } catch (e) {
       console.warn('Could not save tasksMaster to localStorage', e);
     }
@@ -527,6 +583,38 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }).catch(() => {});
   };
 
+  const syncMasterCatalog = (): { count: number; added: number } => {
+    let beforeCount = 0;
+    Object.values(tasksMaster).forEach(list => {
+      beforeCount += (list || []).length;
+    });
+
+    const reconciled = reconcileMasterTasks(tasksMaster);
+
+    let afterCount = 0;
+    Object.values(reconciled).forEach(list => {
+      afterCount += (list || []).length;
+    });
+
+    setTasksMaster(reconciled);
+    try {
+      localStorage.setItem('sbl_master_tasks_v5', JSON.stringify(reconciled));
+    } catch {
+      // ignore
+    }
+
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tasksMaster: reconciled,
+        sectionsConfig,
+      }),
+    }).catch(() => {});
+
+    return { count: afterCount, added: Math.max(0, afterCount - beforeCount) };
+  };
+
   return (
     <TaskContext.Provider
       value={{
@@ -549,6 +637,7 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         resetSlas,
         importMasterData,
         resetMasterData,
+        syncMasterCatalog,
       }}
     >
       {children}

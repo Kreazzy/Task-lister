@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
-import { DEFAULT_SECTIONS_CONFIG, DEFAULT_MASTER_TASKS, DEFAULT_USERS, DEFAULT_SLA_MILESTONES } from './src/data/defaultData.ts';
+import { DEFAULT_SECTIONS_CONFIG, DEFAULT_MASTER_TASKS, DEFAULT_USERS, DEFAULT_SLA_MILESTONES, DEFAULT_ROLE_DEFINITIONS } from './src/data/defaultData.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,6 +44,7 @@ function readDatabase() {
     slaMilestones: DEFAULT_SLA_MILESTONES,
     historyDB: {},
     usersDB: DEFAULT_USERS,
+    rolesDB: DEFAULT_ROLE_DEFINITIONS,
     appSettings: DEFAULT_APP_SETTINGS,
     updatedAt: new Date().toISOString(),
   };
@@ -95,6 +96,7 @@ app.post('/api/sync', (req: Request, res: Response) => {
     slaMilestones: incoming.slaMilestones || currentDb.slaMilestones,
     historyDB: incoming.historyDB ? { ...currentDb.historyDB, ...incoming.historyDB } : currentDb.historyDB,
     usersDB: incoming.usersDB || currentDb.usersDB,
+    rolesDB: incoming.rolesDB || currentDb.rolesDB || DEFAULT_ROLE_DEFINITIONS,
     appSettings: incoming.appSettings ? { ...currentDb.appSettings, ...incoming.appSettings } : currentDb.appSettings,
   };
 

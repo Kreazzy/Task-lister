@@ -34,9 +34,11 @@ export const CategoryManagerView: React.FC<CategoryManagerViewProps> = ({
   onRequestResetMaster,
   onSuccessNotice,
 }) => {
-  const { sectionsConfig, tasksMaster, addSection, editSection, reorderSections, reorderTasks } = useTasks();
+  const { sectionsConfig, tasksMaster, addSection, editSection, reorderSections, reorderTasks, syncMasterCatalog } = useTasks();
   const { remapTaskKeys } = useHistory();
   const { isAdmin } = useAuth();
+
+  const totalMasterCount = Object.values(tasksMaster).reduce((acc, list) => acc + (list || []).length, 0);
 
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
@@ -126,26 +128,54 @@ export const CategoryManagerView: React.FC<CategoryManagerViewProps> = ({
       {/* Overview & Admin Guidance Banner */}
       <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Layers className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            Operational Categories & SOP Task Catalog
-          </h2>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Layers className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              Operational Categories & SOP Task Catalog
+            </h2>
+            <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+              Total Master Tasks: {totalMasterCount}
+            </span>
+          </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Configure banking shifts, edit category titles & descriptions, and customize standard operating procedures (SOP).
           </p>
         </div>
 
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={onRequestResetMaster}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 rounded-lg transition-colors cursor-pointer"
-            title="Reset master SOP to standard factory banking defaults"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Reset to Bank Defaults
-          </button>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => {
+                const res = syncMasterCatalog();
+                if (onSuccessNotice) {
+                  onSuccessNotice(
+                    res.added > 0
+                      ? `Successfully synchronized: Added ${res.added} missing standard tasks. Master catalog now contains all ${res.count} tasks (#1 through #100).`
+                      : `Catalog Verified: All ${res.count} contiguous standard tasks are actively loaded (#1 through #100).`
+                  );
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 rounded-lg transition-colors cursor-pointer"
+              title="Ensure all 100 contiguous banking SOP tasks (#1 to #100) are loaded in catalog"
+            >
+              <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              Sync 100 Master Tasks
+            </button>
+          )}
+
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={onRequestResetMaster}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 rounded-lg transition-colors cursor-pointer"
+              title="Reset master SOP to standard factory banking defaults"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Reset to Factory Defaults
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -39,7 +39,28 @@ export interface TaskExecution {
 // History DB format: { [dateStr: "YYYY-MM-DD"]: { [taskKey: `${sectionKey}-${sr}`]: TaskExecution } }
 export type HistoryDB = Record<string, Record<string, TaskExecution>>;
 
-export type UserRole = 'admin' | 'operator' | 'supervisor' | 'auditor' | 'manager';
+export type BuiltInRole = 'admin' | 'operator' | 'supervisor' | 'auditor' | 'manager';
+export type UserRole = BuiltInRole | string;
+
+export interface RolePermissions {
+  canViewChecklist: boolean;
+  canExecuteTasks: boolean; // check off tasks & time
+  canVerifyTasks: boolean; // dual-control auth sign-off
+  canManageTasks: boolean; // add/edit/delete tasks & SLAs
+  canManageCategories: boolean; // add/edit shift categories
+  canManageUsers: boolean; // add/edit staff profiles and custom roles
+  canViewAnalytics: boolean; // view charts and export reports
+  canAccessSettings: boolean; // theme & branding control panel
+}
+
+export interface RoleDefinition {
+  id: string; // e.g. "admin", "operator", "supervisor", "auditor", "manager", or custom "role_xyz"
+  name: string; // Display Name, e.g. "Lead Database Administrator"
+  description: string;
+  isSystem?: boolean; // system built-in roles cannot be deleted
+  color: 'purple' | 'emerald' | 'blue' | 'amber' | 'indigo' | 'cyan' | 'rose' | 'slate';
+  permissions: RolePermissions;
+}
 
 export interface UserProfile {
   id: string;

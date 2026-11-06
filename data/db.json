@@ -848,7 +848,14 @@
     "density": "comfortable",
     "layoutFormat": "sections",
     "portalTitle": "Soneri Bank Limited",
-    "portalSubtitle": "IT Operation Task List - Operational Dashboard"
+    "portalSubtitle": "IT Operation Task List - Operational Dashboard",
+    "customColor": "#1d4ed8",
+    "darkMode": true,
+    "logoType": "default",
+    "logoUrl": "",
+    "branchName": "Head Office IT Operations (Central Data Center)",
+    "customFooterText": "Soneri Bank Limited · Information Technology Operations Directorate · 24/7 Core Operations",
+    "showVersionOnRight": true
   },
-  "updatedAt": "2026-11-06T06:21:40.890Z"
+  "updatedAt": "2026-11-06T07:00:42.622Z"
 }

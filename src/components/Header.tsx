@@ -41,7 +41,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenPortalSettings,
   onRequestResetDay,
 }) => {
-  const { currentUser, isAdmin, logout, canViewAnalytics } = useAuth();
+  const { currentUser, isAdmin, logout, canViewAnalytics, canManageCategories, canManageUsers, getRoleDefinition } = useAuth();
   const { settings, toggleDarkMode } = useSettings();
   const {
     todayDateStr,
@@ -197,7 +197,7 @@ export const Header: React.FC<HeaderProps> = ({
               Shift Analytics & Graphs
             </button>
 
-            {isAdmin && (
+            {(isAdmin || canManageCategories) && (
               <button
                 type="button"
                 onClick={() => onSelectTab('categories')}
@@ -212,7 +212,7 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {isAdmin && (
+            {(isAdmin || canManageUsers) && (
               <button
                 type="button"
                 onClick={() => onSelectTab('users')}
@@ -248,20 +248,8 @@ export const Header: React.FC<HeaderProps> = ({
               {currentUser?.initials || 'SB'}
             </div>
             <span className="font-medium truncate max-w-[110px]">{currentUser?.name || 'Staff User'}</span>
-            <span
-              className={`text-[10px] uppercase font-bold px-1.5 py-0.2 rounded-xs ${
-                currentUser?.role === 'admin'
-                  ? 'bg-purple-900/60 text-purple-300 border border-purple-700/50'
-                  : currentUser?.role === 'supervisor'
-                  ? 'bg-blue-900/60 text-blue-300 border border-blue-700/50'
-                  : currentUser?.role === 'auditor'
-                  ? 'bg-amber-900/60 text-amber-300 border border-amber-700/50'
-                  : currentUser?.role === 'manager'
-                  ? 'bg-indigo-900/60 text-indigo-300 border border-indigo-700/50'
-                  : 'bg-emerald-900/60 text-emerald-300 border border-emerald-700/50'
-              }`}
-            >
-              {currentUser?.role || 'Operator'}
+            <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-xs bg-slate-700 text-slate-200 border border-slate-600">
+              {currentUser ? (getRoleDefinition(currentUser.role)?.name ? getRoleDefinition(currentUser.role)!.name.split(' ')[0] : currentUser.role) : 'Operator'}
             </span>
           </button>
 

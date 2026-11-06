@@ -41,7 +41,8 @@ export const ChecklistView: React.FC<ChecklistViewProps> = ({
     getSectionStats,
     remapTaskKeys,
   } = useHistory();
-  const { currentUser, isAdmin, canVerify } = useAuth();
+  const { currentUser, isAdmin, canVerify, canExecute, canManageTasks } = useAuth();
+  const canManage = isAdmin || canManageTasks;
   const { settings } = useSettings();
 
   const [searchQuery, setSearchQuery] = useState('');

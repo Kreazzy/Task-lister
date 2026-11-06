@@ -68,7 +68,7 @@ const DashboardContent: React.FC = () => {
 
   const { deleteTask, deleteSection, resetMasterData, importMasterData } = useTasks();
   const { viewingDateStr, resetDay, importHistory } = useHistory();
-  const { isAdmin, canViewAnalytics, deleteUser, importUsers } = useAuth();
+  const { isAdmin, canViewAnalytics, canManageCategories, canManageUsers, deleteUser, importUsers } = useAuth();
   const { settings, updateSettings, toggleDarkMode } = useSettings();
 
   // Multi-user Real-time polling via Express Backend
@@ -84,7 +84,7 @@ const DashboardContent: React.FC = () => {
           if (data.tasksMaster && data.sectionsConfig) {
             importMasterData(data.sectionsConfig, data.tasksMaster, data.slaMilestones);
           }
-          if (data.usersDB) importUsers(data.usersDB);
+          if (data.usersDB) importUsers(data.usersDB, data.rolesDB);
           if (data.appSettings) updateSettings(data.appSettings);
         }
       } catch {
@@ -108,12 +108,14 @@ const DashboardContent: React.FC = () => {
 
   // Enforce role-based access restrictions
   useEffect(() => {
-    if (!isAdmin && !canViewAnalytics && currentTab !== 'checklist') {
+    if (!isAdmin && !canViewAnalytics && currentTab === 'analytics') {
       setCurrentTab('checklist');
-    } else if (!isAdmin && (currentTab === 'categories' || currentTab === 'users')) {
+    } else if (!isAdmin && !canManageCategories && currentTab === 'categories') {
+      setCurrentTab('checklist');
+    } else if (!isAdmin && !canManageUsers && currentTab === 'users') {
       setCurrentTab('checklist');
     }
-  }, [isAdmin, canViewAnalytics, currentTab]);
+  }, [isAdmin, canViewAnalytics, canManageCategories, canManageUsers, currentTab]);
 
   const showNotice = (title: string, message: string, type: 'info' | 'success' | 'warning' = 'info') => {
     setNotice({ isOpen: true, title, message, type });

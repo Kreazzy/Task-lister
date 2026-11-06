@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { UserProfile, UserRole } from '../types';
-import { DEFAULT_USERS } from '../data/defaultData';
+import { UserProfile, UserRole, RoleDefinition, RolePermissions } from '../types';
+import { DEFAULT_USERS, DEFAULT_ROLE_DEFINITIONS } from '../data/defaultData';
 
 interface AuthContextType {
   users: UserProfile[];
+  roles: RoleDefinition[];
   currentUser: UserProfile | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -11,7 +12,11 @@ interface AuthContextType {
   isSupervisor: boolean;
   isAuditor: boolean;
   isManager: boolean;
+  canExecute: boolean;
   canVerify: boolean;
+  canManageTasks: boolean;
+  canManageCategories: boolean;
+  canManageUsers: boolean;
   canViewAnalytics: boolean;
   canManageSettings: boolean;
   login: (pin: string, userId?: string) => { success: boolean; message?: string };
@@ -21,26 +26,41 @@ interface AuthContextType {
   updateUser: (userId: string, updates: Partial<Omit<UserProfile, 'id' | 'createdAt'>>) => void;
   deleteUser: (userId: string) => boolean;
   toggleUserStatus: (userId: string) => void;
+  addRole: (roleData: Omit<RoleDefinition, 'id' | 'isSystem'>) => RoleDefinition;
+  updateRole: (roleId: string, updates: Partial<Omit<RoleDefinition, 'id' | 'isSystem'>>) => void;
+  deleteRole: (roleId: string) => { success: boolean; message?: string };
+  getRoleDefinition: (roleId: string) => RoleDefinition | undefined;
   verifyAdminPassword: (password: string) => boolean;
-  importUsers: (users: UserProfile[]) => void;
+  importUsers: (users: UserProfile[], roles?: RoleDefinition[]) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const VALID_ROLES: UserRole[] = ['admin', 'operator', 'supervisor', 'auditor', 'manager'];
-
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [users, setUsers] = useState<UserProfile[]>(() => {
+  const [roles, setRoles] = useState<RoleDefinition[]>(() => {
     try {
-      const saved = localStorage.getItem('sbl_users_db_v2');
+      const saved = localStorage.getItem('sbl_roles_db_v1');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((u: any) => ({
-            ...u,
-            role: VALID_ROLES.includes(u.role) ? u.role : 'operator',
-          }));
+          // Ensure all default system roles exist
+          const systemIds = DEFAULT_ROLE_DEFINITIONS.map(r => r.id);
+          const customOnly = parsed.filter((r: RoleDefinition) => !systemIds.includes(r.id));
+          return [...DEFAULT_ROLE_DEFINITIONS, ...customOnly];
         }
+      }
+    } catch {
+      // fallback
+    }
+    return DEFAULT_ROLE_DEFINITIONS;
+  });
+
+  const [users, setUsers] = useState<UserProfile[]>(() => {
+    try {
+      const saved = localStorage.getItem('sbl_users_db_v3');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch {
       // fallback
@@ -64,10 +84,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const isAuthenticated = currentUser !== null;
 
+  // Sync roles to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('sbl_roles_db_v1', JSON.stringify(roles));
+    } catch (e) {
+      console.warn('Could not save roles to localStorage', e);
+    }
+  }, [roles]);
+
   // Sync users to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('sbl_users_db_v2', JSON.stringify(users));
+      localStorage.setItem('sbl_users_db_v3', JSON.stringify(users));
     } catch (e) {
       console.warn('Could not save users to localStorage', e);
     }
@@ -87,16 +116,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [currentUser]);
 
   const role = currentUser?.role;
-  const isAdmin = role === 'admin';
+  const currentRoleDef = roles.find(r => r.id === role) || DEFAULT_ROLE_DEFINITIONS.find(r => r.id === 'operator')!;
+
+  const isAdmin = role === 'admin' || (currentRoleDef.permissions.canManageUsers && currentRoleDef.permissions.canAccessSettings);
   const isOperator = role === 'operator';
   const isSupervisor = role === 'supervisor';
   const isAuditor = role === 'auditor';
   const isManager = role === 'manager';
 
-  // Role Permissions matrix
-  const canVerify = isAdmin || isSupervisor || isManager;
-  const canViewAnalytics = isAdmin || isSupervisor || isManager || isAuditor;
-  const canManageSettings = isAdmin;
+  // Dynamic Role Permissions based on assigned RoleDefinition
+  const canExecute = currentRoleDef.permissions.canExecuteTasks;
+  const canVerify = currentRoleDef.permissions.canVerifyTasks || isAdmin;
+  const canManageTasks = currentRoleDef.permissions.canManageTasks || isAdmin;
+  const canManageCategories = currentRoleDef.permissions.canManageCategories || isAdmin;
+  const canManageUsers = currentRoleDef.permissions.canManageUsers || isAdmin;
+  const canViewAnalytics = currentRoleDef.permissions.canViewAnalytics || isAdmin;
+  const canManageSettings = currentRoleDef.permissions.canAccessSettings || isAdmin;
 
   const login = (pin: string, userId?: string): { success: boolean; message?: string } => {
     const cleanPin = pin.trim();
@@ -240,19 +275,90 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   };
 
+  const addRole = (roleData: Omit<RoleDefinition, 'id' | 'isSystem'>): RoleDefinition => {
+    const id = `role_${Date.now().toString(36)}`;
+    const newRole: RoleDefinition = {
+      ...roleData,
+      id,
+      isSystem: false,
+    };
+    setRoles(prev => {
+      const next = [...prev, newRole];
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rolesDB: next }),
+      }).catch(() => {});
+      return next;
+    });
+    return newRole;
+  };
+
+  const updateRole = (roleId: string, updates: Partial<Omit<RoleDefinition, 'id' | 'isSystem'>>) => {
+    setRoles(prev => {
+      const next = prev.map(r => {
+        if (r.id === roleId) {
+          return {
+            ...r,
+            ...updates,
+            permissions: {
+              ...r.permissions,
+              ...(updates.permissions || {}),
+            },
+          };
+        }
+        return r;
+      });
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rolesDB: next }),
+      }).catch(() => {});
+      return next;
+    });
+  };
+
+  const deleteRole = (roleId: string): { success: boolean; message?: string } => {
+    const target = roles.find(r => r.id === roleId);
+    if (!target) return { success: false, message: 'Role not found.' };
+    if (target.isSystem) return { success: false, message: 'System built-in roles cannot be deleted.' };
+
+    const assignedCount = users.filter(u => u.role === roleId).length;
+    if (assignedCount > 0) {
+      return {
+        success: false,
+        message: `Cannot delete role "${target.name}" because ${assignedCount} staff member(s) are assigned to it. Reassign them first.`,
+      };
+    }
+
+    setRoles(prev => {
+      const next = prev.filter(r => r.id !== roleId);
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rolesDB: next }),
+      }).catch(() => {});
+      return next;
+    });
+    return { success: true };
+  };
+
+  const getRoleDefinition = (roleId: string): RoleDefinition | undefined => {
+    return roles.find(r => r.id === roleId);
+  };
+
   const verifyAdminPassword = (password: string): boolean => {
     if (password === 'admin123') return true;
     const adminUser = users.find(u => u.role === 'admin' && u.pin === password);
     return !!adminUser;
   };
 
-  const importUsers = (importedUsers: UserProfile[]) => {
+  const importUsers = (importedUsers: UserProfile[], importedRoles?: RoleDefinition[]) => {
     if (Array.isArray(importedUsers) && importedUsers.length > 0) {
-      const normalized = importedUsers.map(u => ({
-        ...u,
-        role: VALID_ROLES.includes(u.role) ? u.role : 'operator',
-      }));
-      setUsers(normalized);
+      setUsers(importedUsers);
+    }
+    if (Array.isArray(importedRoles) && importedRoles.length > 0) {
+      setRoles(importedRoles);
     }
   };
 
@@ -260,6 +366,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     <AuthContext.Provider
       value={{
         users,
+        roles,
         currentUser,
         isAuthenticated,
         isAdmin,
@@ -267,7 +374,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isSupervisor,
         isAuditor,
         isManager,
+        canExecute,
         canVerify,
+        canManageTasks,
+        canManageCategories,
+        canManageUsers,
         canViewAnalytics,
         canManageSettings,
         login,
@@ -277,6 +388,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         updateUser,
         deleteUser,
         toggleUserStatus,
+        addRole,
+        updateRole,
+        deleteRole,
+        getRoleDefinition,
         verifyAdminPassword,
         importUsers,
       }}
