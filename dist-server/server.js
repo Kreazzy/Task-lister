@@ -1,0 +1,426 @@
+// server.ts
+import express from "express";
+import fs from "fs";
+import path from "path";
+import { createServer as createViteServer } from "vite";
+
+// src/data/defaultData.ts
+var DEFAULT_SECTIONS_CONFIG = [
+  { key: "morn", title: "Daily Operation Tasks (Morning)", description: "Morning initialization, rate downloads & connectivity" },
+  { key: "daily", title: "Daily Operation Tasks", description: "Core day-shift processing, CUTOFF & Pre-COB routines" },
+  { key: "night", title: "Daily / Post COB / Night Task", description: "Close of Business (COB) execution, reports & backups" },
+  { key: "weekly", title: "Weekly Task", description: "Weekend full tape backups and database verification" },
+  { key: "monthly", title: "Monthly Task", description: "Start of Month (SOM) & End of Month (EOM) routines" }
+];
+var DEFAULT_MASTER_TASKS = {
+  morn: [
+    { sr: 1, nature: "Daily", time: "8:30am", task: "Morning System Initialization & Connectivity Check", profile: "Prod Server" },
+    { sr: 2, nature: "Mon, Wed, Fri.", time: "-", task: "Bancassurance Recovery Process", profile: "Utility" },
+    { sr: 3, nature: "Daily", time: "9am", task: "Corporate Rates", profile: "Browser" },
+    { sr: 4, nature: "Daily", time: "10:30am", task: "PSW Process", profile: "Prod Server" },
+    { sr: 5, nature: "Daily", time: "-", task: "Bulk Upload", profile: "Browser" },
+    { sr: 6, nature: "Daily", time: "3pm", task: "KIBOR Rates", profile: "Browser" },
+    { sr: 7, nature: "Daily", time: "1pm", task: "Cheque Book File Generation (9001-9003)", profile: "Browser" },
+    { sr: 8, nature: "Daily", time: "4:00pm", task: "PSW Process", profile: "Prod Server" },
+    { sr: 9, nature: "Daily", time: "-", task: "Card Fee Recovery Process", profile: "Utility" },
+    { sr: 10, nature: "Daily", time: "-", task: "ATL File Receiving", profile: "Other" },
+    { sr: 11, nature: "Daily", time: "-", task: "ATL Utility", profile: "Utility" },
+    { sr: 12, nature: "Daily", time: "-", task: "ATL Deletion", profile: "Server" },
+    { sr: 13, nature: "Daily", time: "-", task: "ATL Addition", profile: "Server" },
+    { sr: 14, nature: "Daily", time: "-", task: "ATL Service COK", profile: "Browser" },
+    { sr: 15, nature: "Daily", time: "-", task: "ATL Service IBD", profile: "Browser" },
+    { sr: 16, nature: "on Request", time: "-", task: "Old SOA", profile: "Server" },
+    { sr: 17, nature: "Daily", time: "8:45am", task: "Morning Core Banking Health & Connectivity Verification", profile: "Validation" }
+  ],
+  daily: [
+    { sr: 18, nature: "Daily", time: "-", task: "Bulk Upload", profile: "Browser" },
+    { sr: 19, nature: "Daily", time: "5:00PM", task: "CUTOFF EMAIL", profile: "EMAIL" },
+    { sr: 20, nature: "Daily", time: "5:30PM", task: "SWIFT Send Only", profile: "Utility" },
+    { sr: 21, nature: "Daily", time: "5PM", task: "Internet Validation", profile: "Validation" },
+    { sr: 22, nature: "Daily", time: "Before Cutoff", task: "WEBTECH", profile: "Browser" },
+    { sr: 23, nature: "Daily", time: "6pm", task: "Cheque Book File Generation (9001-9003)", profile: "Browser" },
+    { sr: 24, nature: "Daily", time: "7:00PM", task: "Pre COB DB BACKUP (Option 7)", profile: "Prod Server" },
+    { sr: 25, nature: "Daily", time: "7:30PM", task: "Final Realization", profile: "Browser" },
+    { sr: 26, nature: "Daily", time: "-", task: "Card Fee Recovery Process", profile: "Utility" },
+    { sr: 27, nature: "Daily", time: "-", task: "NACTA File Upload", profile: "Browser" },
+    { sr: 28, nature: "Daily", time: "Before Cutoff", task: "Swift In (instance = 0), Swift Out (instance = 0), SI_to_swift (instance = 0)", profile: "Validation" },
+    { sr: 29, nature: "Daily", time: "Before Cutoff", task: "SWIFT PSACKEP instaces queue check = 0", profile: "Validation" },
+    { sr: 30, nature: "Daily", time: "Before Cutoff", task: "SWIFT Shutdown & Backup", profile: "Process" },
+    { sr: 31, nature: "Daily", time: "After Cutoff", task: "Rates Validation and Authorization Email", profile: "Browser" },
+    { sr: 32, nature: "Daily", time: "-", task: "Card Fee Recovery Process", profile: "Utility" },
+    { sr: 33, nature: "Daily", time: "Pre COB", task: "Stop COK/SBL.B.CHQ.STK.UPLOAD", profile: "Prod Server" },
+    { sr: 34, nature: "Daily", time: "Pre COB", task: "Stop COK/SBL.B.SIGNATURE.UPLOAD", profile: "Prod Server" },
+    { sr: 35, nature: "Daily", time: "Pre COB", task: "Disable Load balancer", profile: "Browser" },
+    { sr: 36, nature: "Daily", time: "Pre COB", task: "/PROTOCOL.sh [\\\\10.12.1.213\\dw_current\\PROTOCOL(DDMMYYYY)]", profile: "Prod Server" },
+    { sr: 37, nature: "Daily", time: "Pre COB", task: "AAA-Unauth Routine", profile: "Prod Server" },
+    { sr: 38, nature: "Daily", time: "Pre COB", task: "Pre COB APP Backup", profile: "Prod Server" },
+    { sr: 39, nature: "Daily", time: "Pre COB", task: "Count check (FCOB, EIBD & F.OFS)", profile: "Prod Server" },
+    { sr: 40, nature: "Daily", time: "Pre COB", task: "Truncate Protocol", profile: "Prod Server" },
+    { sr: 41, nature: "Daily", time: "Pre COB", task: "Correction Procedure", profile: "Prod Server" },
+    { sr: 42, nature: "Daily", time: "Pre COB", task: "STOP TSM", profile: "Prod Server" },
+    { sr: 43, nature: "Daily", time: "Pre COB", task: "COS TSS LIST", profile: "Validation" },
+    { sr: 44, nature: "Daily", time: "Pre COB", task: "Exception Report", profile: "Prod Server" },
+    { sr: 45, nature: "Daily", time: "Pre COB", task: "Run DELETE.STATUS.AND.SESSION", profile: "Prod Server" },
+    { sr: 46, nature: "Daily", time: "Pre COB", task: "CLEAR Error/EOD/AAA EXCEPTION", profile: "Prod Server" },
+    { sr: 47, nature: "Daily", time: "Pre COB", task: "Truncate Tables", profile: "Prod Server" },
+    { sr: 48, nature: "Daily", time: "Pre COB", task: "&COMO& Backup", profile: "Prod Server" },
+    { sr: 49, nature: "Daily", time: "Pre COB", task: "Check LOCKS", profile: "Prod Server" },
+    { sr: 50, nature: "Daily", time: "Pre COB", task: "Set TSM to AUTO", profile: "Prod Server" },
+    { sr: 51, nature: "Daily", time: "Pre COB", task: "Run START.TSM FROM CLASSIC (T24APP1-E8)", profile: "Prod Server" },
+    { sr: 52, nature: "Daily", time: "Pre COB", task: "START TSM TAFJEE FROM SERVLET (TSM32P9085)", profile: "Browser" }
+  ],
+  night: [
+    { sr: 53, nature: "Daily", time: "Pre COB", task: "Check Services before Starting COB - COS TSS.LIST", profile: "Prod Server" },
+    { sr: 54, nature: "Daily", time: "Pre COB", task: "COS TSS.LIST MARK START SERVICE COK/SBL.B.SARMAYA.BEFORE", profile: "Browser" },
+    { sr: 55, nature: "Daily", time: "-", task: "Start COB", profile: "Prod Server" },
+    { sr: 56, nature: "Daily", time: "During COB", task: "AAA-UNAUTH (Email)", profile: "EMAIL" },
+    { sr: 57, nature: "Daily", time: "During COB", task: "Pre Cob Task (Email)", profile: "EMAIL" },
+    { sr: 58, nature: "Daily", time: "During COB", task: "World Cheque", profile: "Service" },
+    { sr: 59, nature: "Daily", time: "During COB", task: "WEBTECH Soneri Restoration 10.35.1.89", profile: "Service" },
+    { sr: 60, nature: "During COB", time: "-", task: "TRS (Treasury Report Service) DATA - COK/BNK/IBD: After COB reporting stage complete, download TRS Files on 10.12.1.213 in Extract TRS folder and execute service", profile: "Server" },
+    { sr: 61, nature: "Daily", time: "Post COB", task: "COS TSS.LIST MARK START SERVICE COK/SBL.B.SARMAYA.AFTER", profile: "Browser" },
+    { sr: 62, nature: "Daily", time: "Post COB", task: "Post COB Application Backup", profile: "Prod Server" },
+    { sr: 63, nature: "Daily", time: "Post COB", task: "COMO Backup After COB", profile: "Prod Server" },
+    { sr: 64, nature: "Daily", time: "Post COB", task: "Extract JT & RT Reports", profile: "Prod Server" },
+    { sr: 65, nature: "Daily", time: "Post COB", task: "COUNT F.OFS.MESSAGE.QUEUE", profile: "Prod Server" },
+    { sr: 66, nature: "Daily", time: "Post COB", task: "cd /scripts/EBEODERROR.sh", profile: "Prod Server" },
+    { sr: 67, nature: "Daily", time: "Post COB", task: "BNK/SBL.EOD.RETURN.CHARGES", profile: "Prod Server" },
+    { sr: 68, nature: "Daily", time: "-", task: "Copy PD Reports", profile: "Other" },
+    { sr: 69, nature: "Daily", time: "Post COB", task: "COK/DW.EXPORT.SERVICE.FT1", profile: "Prod Server" },
+    { sr: 70, nature: "Daily", time: "Post COB", task: "COK/DW.EXPORT.SERVICE.CRF1", profile: "Prod Server" },
+    { sr: 71, nature: "Daily", time: "Post COB", task: "BNK/DW.EXPORT.SERVICE.TAX", profile: "Prod Server" },
+    { sr: 72, nature: "Daily", time: "Post COB", task: "COK/DW.EXPORT.SERVICE.OTH1", profile: "Prod Server" },
+    { sr: 73, nature: "Daily", time: "Post COB", task: "BNK/DW.EXPORT.SERVICE.REM", profile: "Prod Server" },
+    { sr: 74, nature: "Daily", time: "Post COB", task: "IBD/DW.EXPORT.SERVICE.ALL", profile: "Prod Server" },
+    { sr: 75, nature: "Daily", time: "-", task: "Consolidated Reports", profile: "Prod Server" },
+    { sr: 76, nature: "Daily", time: "8:00AM", task: "SWIFT Start", profile: "Server" },
+    { sr: 77, nature: "Daily", time: "-", task: "COK/SBL.B.CHQ.STK.UPLOAD", profile: "Prod Server" },
+    { sr: 78, nature: "Daily", time: "-", task: "COK/SBL.B.SIGNATURE.UPLOAD", profile: "Prod Server" },
+    { sr: 79, nature: "Daily", time: "-", task: "START.TSM TAFJEE FROM SERVLET", profile: "Browser" },
+    { sr: 80, nature: "Daily", time: "-", task: "RTN.CLEAR.EXPIRED.TOKENS", profile: "Prod Server" },
+    { sr: 81, nature: "Daily", time: "8:00AM", task: "Enable Load Balancer", profile: "Browser" },
+    { sr: 82, nature: "Daily", time: "Post COB", task: "Post COB Tape Backup", profile: "DB Server" },
+    { sr: 83, nature: "Daily", time: "Post COB", task: "DW copied to 10.12.1.213 & 10.10.2.169", profile: "Server" },
+    { sr: 84, nature: "Daily", time: "Post COB", task: "After DW Copied Reset SDM", profile: "Server" },
+    { sr: 85, nature: "Daily", time: "8:45 AM", task: "Check LOCKS (F.OFS.TOKENS)", profile: "Prod Server" },
+    { sr: 86, nature: "Daily", time: "Post COB", task: "Post COB Tape Verification & Logging", profile: "DB Server" },
+    { sr: 87, nature: "Daily", time: "Post COB", task: "Night Shift Batch Completion Confirmation", profile: "Validation" }
+  ],
+  weekly: [
+    { sr: 88, nature: "Weekly", time: "Saturday NIGHT", task: "FULL TAPE DB BKUP POST COB", profile: "DB Server" },
+    { sr: 89, nature: "Weekly", time: "Sunday", task: "SMS File", profile: "Prod Server" },
+    { sr: 90, nature: "Weekly", time: "Sunday", task: "FULL T24 TAPE backup (AGOB & BCOB)", profile: "Prod Server" },
+    { sr: 91, nature: "Daily", time: "-", task: "Pre Bkp till ...00PM", profile: "DB Server" },
+    { sr: 92, nature: "Weekly", time: "Saturday Evening", task: "Pre Bkp till ...00PM", profile: "DB Server" }
+  ],
+  monthly: [
+    { sr: 93, nature: "Monthly", time: "*SOM on 10th", task: "IBD Tax Routine on every month after 10th cob", profile: "Prod Server", note: "SBL.M.PROF.ACCT.TAX.COB" },
+    { sr: 94, nature: "Monthly", time: "*SOM", task: "COK Tax Routine on every month after 01st COB", profile: "Prod Server", note: "SBL.M.PROF.ACCT.TAX.COB" },
+    { sr: 95, nature: "Monthly", time: "*EOM", task: "BASIC INTEREST Rates", profile: "Browser" },
+    { sr: 96, nature: "Monthly", time: "*EOM", task: "KIBOR RATE 18 LEAD TABLE", profile: "Browser" },
+    { sr: 97, nature: "Monthly", time: "7th OM", task: "IBD Depreciation Process/Advance Rental Issues", profile: "Prod Server" },
+    { sr: 98, nature: "Monthly", time: "*EOM", task: "SMS File MONTHLY", profile: "Prod Server" },
+    { sr: 99, nature: "Monthly", time: "*SOM", task: "AKU Bulk Upload", profile: "Browser" },
+    { sr: 100, nature: "Monthly", time: "*EOM", task: "Month-End Regulatory & Compliance Reporting Archive", profile: "Server", note: "SBL.M.EOD.ARCHIVE" }
+  ]
+};
+var DEFAULT_USERS = [
+  {
+    id: "user-admin",
+    name: "Waqar Ahmed (Admin)",
+    initials: "WA",
+    role: "admin",
+    pin: "admin123",
+    email: "waqar.admin@soneri.com",
+    department: "IT Operations Directorate",
+    active: true,
+    createdAt: "2026-01-01"
+  },
+  {
+    id: "user-op1",
+    name: "Ali Raza (Operation Officer)",
+    initials: "AR",
+    role: "operator",
+    pin: "1234",
+    email: "ali.raza@soneri.com",
+    department: "Core Banking Shift A",
+    active: true,
+    createdAt: "2026-01-05"
+  },
+  {
+    id: "user-sup1",
+    name: "Kashif Siddiqui (Shift Supervisor)",
+    initials: "KS",
+    role: "supervisor",
+    pin: "1234",
+    email: "kashif.s@soneri.com",
+    department: "Operations Supervision",
+    active: true,
+    createdAt: "2026-01-08"
+  },
+  {
+    id: "user-audit1",
+    name: "Farhan Sheikh (Audit & Compliance)",
+    initials: "FS",
+    role: "auditor",
+    pin: "1234",
+    email: "farhan.audit@soneri.com",
+    department: "Internal IT Audit",
+    active: true,
+    createdAt: "2026-01-12"
+  },
+  {
+    id: "user-mgr1",
+    name: "Nasir Iqbal (Operations Manager)",
+    initials: "NI",
+    role: "manager",
+    pin: "1234",
+    email: "nasir.iqbal@soneri.com",
+    department: "IT Operations Management",
+    active: true,
+    createdAt: "2026-01-02"
+  }
+];
+var DEFAULT_SLA_MILESTONES = [
+  { id: "sla-1", taskKey: "morn-1", label: "Morning System Initialization & Connectivity", targetTime: "8:30 AM", isMandatory: true },
+  { id: "sla-2", taskKey: "daily-19", label: "CUTOFF EMAIL Dispatch", targetTime: "5:00 PM", isMandatory: true },
+  { id: "sla-3", taskKey: "daily-20", label: "SWIFT Send Only Routine", targetTime: "5:30 PM", isMandatory: true },
+  { id: "sla-4", taskKey: "daily-24", label: "Pre COB Database Backup (Option 7)", targetTime: "7:00 PM", isMandatory: true },
+  { id: "sla-5", taskKey: "night-55", label: "Start Close of Business (COB)", targetTime: "Post Cutoff", isMandatory: true },
+  { id: "sla-6", taskKey: "night-82", label: "Post COB Tape Backup Verification", targetTime: "Post COB", isMandatory: true }
+];
+var DEFAULT_ROLE_DEFINITIONS = [
+  {
+    id: "admin",
+    name: "System Administrator",
+    description: "Full unrestricted governance over checklists, users, roles, categories, themes and SOP catalogs.",
+    isSystem: true,
+    color: "purple",
+    permissions: {
+      canViewChecklist: true,
+      canExecuteTasks: true,
+      canVerifyTasks: true,
+      canManageTasks: true,
+      canManageCategories: true,
+      canManageUsers: true,
+      canViewAnalytics: true,
+      canAccessSettings: true
+    }
+  },
+  {
+    id: "operator",
+    name: "Operation Officer (Inputer)",
+    description: "Frontline shift duty: executing checklist items, updating timestamps and recording initials.",
+    isSystem: true,
+    color: "emerald",
+    permissions: {
+      canViewChecklist: true,
+      canExecuteTasks: true,
+      canVerifyTasks: false,
+      canManageTasks: false,
+      canManageCategories: false,
+      canManageUsers: false,
+      canViewAnalytics: false,
+      canAccessSettings: false
+    }
+  },
+  {
+    id: "supervisor",
+    name: "Shift Supervisor (Verifier)",
+    description: "Dual-control authorization: signs off completed items and monitors shift compliance.",
+    isSystem: true,
+    color: "blue",
+    permissions: {
+      canViewChecklist: true,
+      canExecuteTasks: true,
+      canVerifyTasks: true,
+      canManageTasks: false,
+      canManageCategories: false,
+      canManageUsers: false,
+      canViewAnalytics: true,
+      canAccessSettings: false
+    }
+  },
+  {
+    id: "auditor",
+    name: "Audit & Compliance Officer",
+    description: "Read-only regulatory oversight: accesses historical logs, audit trails, and export reports.",
+    isSystem: true,
+    color: "amber",
+    permissions: {
+      canViewChecklist: true,
+      canExecuteTasks: false,
+      canVerifyTasks: false,
+      canManageTasks: false,
+      canManageCategories: false,
+      canManageUsers: false,
+      canViewAnalytics: true,
+      canAccessSettings: false
+    }
+  },
+  {
+    id: "manager",
+    name: "Operations Manager",
+    description: "Executive management: reviews performance trends, verifies sign-offs and manages SOP tasks.",
+    isSystem: true,
+    color: "indigo",
+    permissions: {
+      canViewChecklist: true,
+      canExecuteTasks: true,
+      canVerifyTasks: true,
+      canManageTasks: true,
+      canManageCategories: false,
+      canManageUsers: false,
+      canViewAnalytics: true,
+      canAccessSettings: false
+    }
+  }
+];
+
+// server.ts
+var ROOT_DIR = process.cwd();
+var app = express();
+var PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3e3;
+var DB_DIR = path.resolve(ROOT_DIR, "data");
+var DB_FILE = path.join(DB_DIR, "db.json");
+if (!fs.existsSync(DB_DIR)) {
+  fs.mkdirSync(DB_DIR, { recursive: true });
+}
+var DEFAULT_APP_SETTINGS = {
+  theme: "bank-blue",
+  density: "comfortable",
+  layoutFormat: "sections",
+  portalTitle: "Soneri Bank Limited",
+  portalSubtitle: "IT Operation Task List - Operational Dashboard"
+};
+function readDatabase() {
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const content = fs.readFileSync(DB_FILE, "utf-8");
+      return JSON.parse(content);
+    }
+  } catch (err) {
+    console.error("Error reading db.json, generating defaults", err);
+  }
+  const initialDb = {
+    sectionsConfig: DEFAULT_SECTIONS_CONFIG,
+    tasksMaster: DEFAULT_MASTER_TASKS,
+    slaMilestones: DEFAULT_SLA_MILESTONES,
+    historyDB: {},
+    usersDB: DEFAULT_USERS,
+    rolesDB: DEFAULT_ROLE_DEFINITIONS,
+    appSettings: DEFAULT_APP_SETTINGS,
+    updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+  };
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(initialDb, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Failed to write initial db.json", err);
+  }
+  return initialDb;
+}
+function writeDatabase(data) {
+  try {
+    const updated = {
+      ...data,
+      updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    fs.writeFileSync(DB_FILE, JSON.stringify(updated, null, 2), "utf-8");
+    return true;
+  } catch (err) {
+    console.error("Error writing to db.json", err);
+    return false;
+  }
+}
+app.use(express.json({ limit: "15mb" }));
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", serverTime: (/* @__PURE__ */ new Date()).toISOString() });
+});
+app.get("/api/data", (req, res) => {
+  const db = readDatabase();
+  res.json(db);
+});
+app.post("/api/sync", (req, res) => {
+  const incoming = req.body;
+  const currentDb = readDatabase();
+  const mergedDb = {
+    sectionsConfig: incoming.sectionsConfig || currentDb.sectionsConfig,
+    tasksMaster: incoming.tasksMaster || currentDb.tasksMaster,
+    slaMilestones: incoming.slaMilestones || currentDb.slaMilestones,
+    historyDB: incoming.historyDB ? { ...currentDb.historyDB, ...incoming.historyDB } : currentDb.historyDB,
+    usersDB: incoming.usersDB || currentDb.usersDB,
+    rolesDB: incoming.rolesDB || currentDb.rolesDB || DEFAULT_ROLE_DEFINITIONS,
+    appSettings: incoming.appSettings ? { ...currentDb.appSettings, ...incoming.appSettings } : currentDb.appSettings
+  };
+  const success = writeDatabase(mergedDb);
+  res.json({ success, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), data: mergedDb });
+});
+app.post("/api/tasks/reorder", (req, res) => {
+  const { sectionKey, fromIndex, toIndex } = req.body;
+  const currentDb = readDatabase();
+  const tasksMaster = { ...currentDb.tasksMaster };
+  const list = tasksMaster[sectionKey] ? [...tasksMaster[sectionKey]] : [];
+  if (fromIndex < 0 || fromIndex >= list.length || toIndex < 0 || toIndex >= list.length) {
+    return res.status(400).json({ error: "Invalid indices" });
+  }
+  const [moved] = list.splice(fromIndex, 1);
+  list.splice(toIndex, 0, moved);
+  const baseSr = (tasksMaster[sectionKey] || []).length > 0 ? Math.min(...(tasksMaster[sectionKey] || []).map((t) => t.sr)) : 1;
+  const srMapping = {};
+  const updatedList = list.map((item, idx) => {
+    const newSr = baseSr + idx;
+    if (item.sr !== newSr) {
+      srMapping[item.sr] = newSr;
+    }
+    return {
+      ...item,
+      sr: newSr
+    };
+  });
+  tasksMaster[sectionKey] = updatedList;
+  const historyDB = { ...currentDb.historyDB };
+  if (Object.keys(srMapping).length > 0) {
+    Object.keys(historyDB).forEach((date) => {
+      const dayRec = { ...historyDB[date] || {} };
+      const remappedEntries = [];
+      const keysToDelete = [];
+      Object.entries(srMapping).forEach(([oldSrStr, newSr]) => {
+        const oldKey = `${sectionKey}-${oldSrStr}`;
+        const newKey = `${sectionKey}-${newSr}`;
+        if (dayRec[oldKey]) {
+          remappedEntries.push({ newKey, data: dayRec[oldKey] });
+          keysToDelete.push(oldKey);
+        }
+      });
+      keysToDelete.forEach((k) => delete dayRec[k]);
+      remappedEntries.forEach(({ newKey, data }) => {
+        dayRec[newKey] = data;
+      });
+      historyDB[date] = dayRec;
+    });
+  }
+  currentDb.tasksMaster = tasksMaster;
+  currentDb.historyDB = historyDB;
+  writeDatabase(currentDb);
+  res.json({ success: true, updatedList, srMapping, tasksMaster, historyDB });
+});
+async function startServer() {
+  const isProd = process.env.NODE_ENV === "production";
+  if (!isProd) {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa"
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.resolve(ROOT_DIR, "dist");
+    app.use(express.static(distPath));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  }
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Express server running on http://0.0.0.0:${PORT}`);
+  });
+}
+startServer();

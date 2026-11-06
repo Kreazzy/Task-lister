@@ -5,12 +5,10 @@ import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { DEFAULT_SECTIONS_CONFIG, DEFAULT_MASTER_TASKS, DEFAULT_USERS, DEFAULT_SLA_MILESTONES, DEFAULT_ROLE_DEFINITIONS } from './src/data/defaultData.ts';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
+const ROOT_DIR = process.cwd();
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
-const DB_DIR = path.resolve(__dirname, 'data');
+const DB_DIR = path.resolve(ROOT_DIR, 'data');
 const DB_FILE = path.join(DB_DIR, 'db.json');
 
 // Ensure database directory exists
@@ -181,7 +179,7 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.resolve(__dirname, 'dist');
+    const distPath = path.resolve(ROOT_DIR, 'dist');
     app.use(express.static(distPath));
     app.get('*', (req: Request, res: Response) => {
       res.sendFile(path.join(distPath, 'index.html'));
